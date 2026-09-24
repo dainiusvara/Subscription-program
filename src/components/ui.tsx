@@ -4,12 +4,13 @@ export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-type ButtonVariant = "primary" | "ghost";
+type ButtonVariant = "primary" | "ghost" | "danger";
 type ButtonSize = "md" | "sm";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-accent text-accent-ink",
   ghost: "border border-line bg-transparent",
+  danger: "bg-warn text-surface",
 };
 
 const SIZES: Record<ButtonSize, string> = {

@@ -19,7 +19,7 @@ export function SubscriptionForm({
   editing,
   today,
   count,
-  proPreview,
+  hasPro,
   nameRef,
   sectionRef,
   onSubmit,
@@ -28,7 +28,7 @@ export function SubscriptionForm({
   editing: Subscription | null;
   today: ISODate;
   count: number;
-  proPreview: boolean;
+  hasPro: boolean;
   nameRef: RefObject<HTMLInputElement | null>;
   sectionRef: RefObject<HTMLDivElement | null>;
   onSubmit: (input: SubscriptionInput) => void;
@@ -224,7 +224,7 @@ export function SubscriptionForm({
                 Cancel
               </Button>
             )}
-            {!proPreview && (
+            {!hasPro && (
               <span className="text-[13px] text-muted">
                 <b className="text-ink">{count}</b> of {FREE_LIMIT} on Free
               </span>

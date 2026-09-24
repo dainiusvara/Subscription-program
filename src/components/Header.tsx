@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { CURRENCIES } from "@/lib/catalog";
 import { promptInstall, useInstallMode } from "@/lib/install";
+import type { Account } from "@/lib/store";
 import { setThemePreference, syncSavedThemeColor, useThemePreference, type ThemePreference } from "@/lib/theme";
 import type { CurrencyCode } from "@/lib/types";
 import { AutoThemeIcon, BrandMark, InstallIcon, MoonIcon, ShareIcon, SunIcon } from "./icons";
+import { syncStatus } from "./AccountDialogs";
 import { Modal } from "./Modal";
 import { Button, cx } from "./ui";
 
@@ -20,16 +22,26 @@ export function Brand() {
 
 export function Header({
   currency,
+  pro,
   proPreview,
+  account,
+  cloudAvailable,
   onCurrencyChange,
   onOpenPro,
   onTurnOffPro,
+  onSignIn,
+  onOpenAccount,
 }: {
   currency: CurrencyCode;
+  pro: boolean;
   proPreview: boolean;
+  account: Account;
+  cloudAvailable: boolean;
   onCurrencyChange: (currency: CurrencyCode) => void;
   onOpenPro: () => void;
   onTurnOffPro: () => void;
+  onSignIn: () => void;
+  onOpenAccount: () => void;
 }) {
   const pill = "rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.04em]";
   return (
@@ -37,7 +49,11 @@ export function Header({
       <Brand />
       <div className="flex flex-wrap items-center gap-2">
         <InstallButton />
-        {proPreview ? (
+        {pro ? (
+          <span className={cx(pill, "bg-accent text-accent-ink")} title="You're on Drip Pro">
+            Pro
+          </span>
+        ) : proPreview ? (
           <button
             type="button"
             className={cx(pill, "bg-accent text-accent-ink")}
@@ -71,8 +87,43 @@ export function Header({
           ))}
         </select>
         <ThemeToggle />
+        {cloudAvailable && <AccountButton account={account} onSignIn={onSignIn} onOpenAccount={onOpenAccount} />}
       </div>
     </header>
+  );
+}
+
+function AccountButton({
+  account,
+  onSignIn,
+  onOpenAccount,
+}: {
+  account: Account;
+  onSignIn: () => void;
+  onOpenAccount: () => void;
+}) {
+  if (account.kind === "local") {
+    return (
+      <Button variant="ghost" size="sm" onClick={onSignIn}>
+        Sign in
+      </Button>
+    );
+  }
+  const status = syncStatus(account);
+  const attention = account.offline || (account.pending > 0 && !account.syncing);
+  return (
+    <button
+      type="button"
+      onClick={onOpenAccount}
+      title={`${account.email}. ${status}`}
+      aria-label={`Your account, ${account.email}. ${status}`}
+      className="relative grid h-9 w-9 place-items-center rounded-full bg-accent-soft font-display font-bold text-accent uppercase"
+    >
+      {(Array.from(account.email)[0] ?? "?").toUpperCase()}
+      {attention && (
+        <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-bg bg-warn" />
+      )}
+    </button>
   );
 }
 

@@ -65,7 +65,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(page(request, url));
   } else if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));
-  } else if (!url.pathname.startsWith("/_next/") && !request.headers.has("RSC")) {
+  } else if (!url.pathname.startsWith("/_next/") && !url.pathname.startsWith("/api/") && !request.headers.has("RSC")) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });

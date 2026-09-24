@@ -18,3 +18,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  database:
+    # Runs the row-level security, Free limit and sync tests against a local Supabase.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start
+      - run: npm run test:db

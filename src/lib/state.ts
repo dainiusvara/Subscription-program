@@ -21,6 +21,7 @@ export function createSampleState(today: ISODate, makeId: MakeId): DripState {
   return {
     version: 1,
     currency: "EUR",
+    pro: false,
     proPreview: false,
     example: true,
     subs: [
@@ -33,8 +34,12 @@ export function createSampleState(today: ISODate, makeId: MakeId): DripState {
   };
 }
 
+export function hasPro(state: DripState): boolean {
+  return state.pro || state.proPreview;
+}
+
 export function isAtFreeLimit(state: DripState): boolean {
-  return !state.proPreview && state.subs.length >= FREE_LIMIT;
+  return !hasPro(state) && state.subs.length >= FREE_LIMIT;
 }
 
 /** Applies the form input to a new or existing subscription. */

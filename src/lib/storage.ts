@@ -78,6 +78,7 @@ export function sanitizeState(raw: unknown): DripState | null {
     version: 1,
     subs,
     currency,
+    pro: raw.pro === true,
     proPreview: raw.proPreview === true,
     example: raw.example === true,
   };

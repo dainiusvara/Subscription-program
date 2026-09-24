@@ -94,8 +94,9 @@ describe("sanitizeState", () => {
   });
 
   it("falls back to euros and Free for unknown settings", () => {
-    expect(sanitizeState({ subs: [], currency: "BTC", proPreview: "yes" })).toMatchObject({
+    expect(sanitizeState({ subs: [], currency: "BTC", pro: 1, proPreview: "yes" })).toMatchObject({
       currency: "EUR",
+      pro: false,
       proPreview: false,
       example: false,
     });
@@ -123,7 +124,7 @@ describe("loadState and saveState", () => {
 
   it("round-trips a saved state", () => {
     const storage = memoryStorage();
-    const state = { version: 1 as const, subs: [valid as never], currency: "GBP" as const, proPreview: false, example: false };
+    const state = { version: 1 as const, subs: [valid as never], currency: "GBP" as const, pro: false, proPreview: false, example: false };
     expect(saveState(storage, state)).toBe(true);
     expect(loadState(storage, TODAY, makeId)).toEqual(state);
   });

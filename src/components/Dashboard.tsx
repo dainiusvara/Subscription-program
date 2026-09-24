@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { sortByNextCharge, summarize } from "@/lib/billing";
+import { hasPro } from "@/lib/state";
 import { dripActions, useDrip } from "@/lib/store";
+import { AccountDialog, SignInDialog } from "./AccountDialogs";
 import type { CurrencyCode, Subscription, SubscriptionInput } from "@/lib/types";
 import { Brand, Header } from "./Header";
 import { PlusIcon } from "./icons";
@@ -13,32 +15,24 @@ import { SubscriptionList } from "./SubscriptionList";
 import { Summary } from "./Summary";
 import { Button, Panel } from "./ui";
 
-const TOAST_MS = 2200;
-
 export function Dashboard() {
   const snapshot = useDrip();
   // Bumping `key` remounts the form: a fresh add, or an edit of `editing`.
   const [form, setForm] = useState<{ key: number; editing: Subscription | null }>({ key: 0, editing: null });
   const [proOpen, setProOpen] = useState(false);
-  const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
+  const [dialog, setDialog] = useState<"sign-in" | "account" | null>(null);
   /** An add the Free limit blocked, finished if the user turns on Pro preview. */
   const blockedAdd = useRef<SubscriptionInput | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), TOAST_MS);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
   if (!snapshot) return <DashboardLoading />;
 
-  const { state, today } = snapshot;
+  const { state, today, account, notice } = snapshot;
   const subs = sortByNextCharge(state.subs);
   const summary = summarize(subs, today);
 
-  const showToast = (text: string) => setToast({ id: Date.now(), text });
+  const showToast = dripActions.notify;
   const resetForm = () => setForm((current) => ({ key: current.key + 1, editing: null }));
 
   function handleSubmit(input: SubscriptionInput) {
@@ -61,11 +55,12 @@ export function Dashboard() {
     showToast(`Deleted ${sub.name}`);
   }
 
-  function enablePro() {
-    dripActions.setProPreview(true);
-    setProOpen(false);
+  async function enablePro() {
+    // Read the blocked add first: closing the dialog clears it.
     const pending = blockedAdd.current;
     blockedAdd.current = null;
+    setProOpen(false);
+    if (!(await dripActions.setProPreview(true))) return;
     if (pending && dripActions.add(pending)) {
       resetForm();
       showToast(`Pro preview is on. Added ${pending.name}`);
@@ -91,13 +86,17 @@ export function Dashboard() {
         header={
           <Header
             currency={state.currency}
+            pro={state.pro}
             proPreview={state.proPreview}
+            account={account}
+            cloudAvailable={snapshot.cloudAvailable}
             onCurrencyChange={(currency: CurrencyCode) => dripActions.setCurrency(currency)}
             onOpenPro={() => setProOpen(true)}
-            onTurnOffPro={() => {
-              dripActions.setProPreview(false);
-              showToast("Pro preview is off");
+            onTurnOffPro={async () => {
+              if (await dripActions.setProPreview(false)) showToast("Pro preview is off");
             }}
+            onSignIn={() => setDialog("sign-in")}
+            onOpenAccount={() => setDialog("account")}
           />
         }
       >
@@ -136,27 +135,38 @@ export function Dashboard() {
               editing={form.editing}
               today={today}
               count={subs.length}
-              proPreview={state.proPreview}
+              hasPro={hasPro(state)}
               nameRef={nameRef}
               sectionRef={formRef}
               onSubmit={handleSubmit}
               onCancel={resetForm}
             />
-            {!state.proPreview && <ProCard onOpen={() => setProOpen(true)} />}
+            {!hasPro(state) && <ProCard onOpen={() => setProOpen(true)} />}
           </div>
         </div>
       </Page>
 
       <ProDialog open={proOpen} onClose={closePro} onEnable={enablePro} />
+      {snapshot.cloudAvailable && (
+        <SignInDialog open={dialog === "sign-in"} onClose={() => setDialog(null)} />
+      )}
+      {account.kind === "cloud" && (
+        <AccountDialog
+          open={dialog === "account"}
+          onClose={() => setDialog(null)}
+          account={account}
+          state={state}
+        />
+      )}
       <AddShortcut target={formRef} onActivate={focusForm} />
       <div
         role="status"
         aria-live="polite"
         className="pointer-events-none fixed bottom-[calc(20px+env(safe-area-inset-bottom,0px))] left-1/2 z-20 -translate-x-1/2 max-md:bottom-[calc(84px+env(safe-area-inset-bottom,0px))]"
       >
-        {toast && (
-          <div key={toast.id} className="w-max max-w-[calc(100vw-32px)] rounded-[10px] bg-ink px-4 py-2.5 text-center text-sm text-bg">
-            {toast.text}
+        {notice && (
+          <div key={notice.id} className="w-max max-w-[calc(100vw-32px)] rounded-[10px] bg-ink px-4 py-2.5 text-center text-sm text-bg">
+            {notice.text}
           </div>
         )}
       </div>

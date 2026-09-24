@@ -42,6 +42,8 @@ export interface DripState {
   version: 1;
   subs: Subscription[];
   currency: CurrencyCode;
+  /** Paid Pro, confirmed by the server. Always false when signed out. */
+  pro: boolean;
   /** Free preview of Pro while payments aren't live. */
   proPreview: boolean;
   /** True while the list still holds the sample subscriptions. */
