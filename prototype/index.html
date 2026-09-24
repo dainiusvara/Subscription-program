@@ -1,0 +1,453 @@
+<title>Drip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --surface-2:#E4EAE7; --ink:#15201C; --muted:#5B6A64;
+  --line:#D3DCD8; --accent:#0A6F6A; --accent-ink:#FFFFFF; --accent-soft:#D5ECE9;
+  --warn:#B7410E; --warn-soft:#F8E2D6; --good:#2E7A3A; --good-soft:#DDEFDF;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1412; --surface:#151F1C; --surface-2:#1D2A26; --ink:#E4EDE9; --muted:#93A59E;
+    --line:#2A3A35; --accent:#3CC3B6; --accent-ink:#06201D; --accent-soft:#143B37;
+    --warn:#F08A55; --warn-soft:#3A2116; --good:#6FCB7C; --good-soft:#17321C;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1412; --surface:#151F1C; --surface-2:#1D2A26; --ink:#E4EDE9; --muted:#93A59E;
+  --line:#2A3A35; --accent:#3CC3B6; --accent-ink:#06201D; --accent-soft:#143B37;
+  --warn:#F08A55; --warn-soft:#3A2116; --good:#6FCB7C; --good-soft:#17321C;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding:0 16px}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 64px;display:grid;gap:22px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:30px;height:30px}
+.brand b{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em}
+.top-actions{display:flex;gap:8px;align-items:center}
+select.cur{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.pill{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.pill.pro{background:var(--accent);color:var(--accent-ink)}
+.pill.free{background:var(--surface-2);color:var(--muted)}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;align-items:end}
+.hero h1{font-family:var(--display);font-weight:800;font-size:clamp(40px,8vw,76px);line-height:.95;letter-spacing:-.035em;margin:0}
+.hero h1 .unit{font-size:.42em;color:var(--muted);font-weight:500;letter-spacing:0}
+.hero p{margin:8px 0 0;color:var(--muted);max-width:44ch;text-wrap:balance}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stat{background:var(--surface);padding:14px 16px}
+.stat small{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stat strong{font-family:var(--mono);font-size:22px;font-weight:500}
+.stat.save strong{color:var(--good)}
+
+.example{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border-radius:12px;padding:10px 14px;font-size:14px}
+
+section.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.panel h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+.panel .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+/* 30 day strip */
+.strip{display:grid;grid-template-columns:repeat(30,1fr);gap:3px;align-items:end;height:92px;padding-top:18px;position:relative}
+.day{background:var(--surface-2);border-radius:3px;min-height:6px;position:relative}
+.day.hit{background:var(--accent)}
+.day.trial{background:var(--warn)}
+.day .amt{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;margin-bottom:2px}
+.strip-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+.upcoming{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
+.upcoming li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.when{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.when.soon{background:var(--warn-soft);color:var(--warn)}
+
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:start}
+
+/* list */
+.subs{list-style:none;margin:0;padding:0}
+.subrow{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.subrow:first-child{border-top:0}
+.logo{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-family:var(--display);font-weight:800;color:#fff;font-size:16px}
+.subrow .name{font-weight:600}
+.meta{font-size:13px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.good{background:var(--good-soft);color:var(--good)}
+.right{text-align:right;display:grid;gap:4px;justify-items:end}
+.price{font-family:var(--mono);font-size:15px}
+.row-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.link{background:none;border:0;padding:2px 6px;font-size:12px;color:var(--muted);border-radius:6px}
+.link:hover{background:var(--surface-2);color:var(--ink)}
+.link.danger{color:var(--warn)}
+.empty{color:var(--muted);padding:18px 0;text-align:center}
+
+/* form */
+form{display:grid;gap:10px}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.03em}
+.field input,.field select{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 10px;width:100%}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px;font-size:13px}
+.chip:hover{border-color:var(--accent)}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.limit{font-size:13px;color:var(--muted)}
+.limit b{color:var(--ink)}
+
+/* pro */
+.pro-card{background:var(--ink);color:var(--bg);border-radius:16px;padding:20px;display:grid;gap:12px}
+.pro-card h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0;letter-spacing:-.02em}
+.pro-card ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.pro-card .priceline{font-family:var(--mono)}
+.pro-card .btn{background:var(--accent);color:var(--accent-ink);justify-self:start}
+
+.modal{position:fixed;inset:0;background:rgba(5,12,10,.55);display:grid;place-items:center;padding:16px;z-index:10}
+.modal .box{background:var(--surface);color:var(--ink);border-radius:18px;max-width:440px;width:100%;padding:22px;display:grid;gap:12px;border:1px solid var(--line)}
+.modal h3{font-family:var(--display);font-size:24px;margin:0;letter-spacing:-.02em}
+.modal ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.modal .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20}
+
+@media (max-width:760px){
+  .hero,.grid2{grid-template-columns:1fr}
+  .strip{gap:2px}
+  .day .amt{display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .day{transition:height .4s ease}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c5 7 9 11.5 9 17a9 9 0 0 1-18 0c0-5.5 4-10 9-17z" fill="var(--accent)"/><path d="M12 21a4 4 0 0 0 4 4" stroke="var(--accent-ink)" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <b>Drip</b>
+    </div>
+    <div class="top-actions">
+      <span id="planPill" class="pill free">Free</span>
+      <select id="currency" class="cur" aria-label="Currency">
+        <option value="€">€ EUR</option><option value="$">$ USD</option><option value="£">£ GBP</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1><span id="bigMonthly" class="num">€0</span> <span class="unit">/ month</span></h1>
+      <p>Every subscription you pay for, in one place. Drip warns you before each charge and points out the ones you've stopped using.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>Per year</small><strong id="statYear">€0</strong></div>
+      <div class="stat"><small>Subscriptions</small><strong id="statCount">0</strong></div>
+      <div class="stat"><small>Next 30 days</small><strong id="stat30">€0</strong></div>
+      <div class="stat save"><small>You could save / yr</small><strong id="statSave">€0</strong></div>
+    </div>
+  </div>
+
+  <div id="exampleBar" class="example" hidden>
+    <span>You're looking at example subscriptions. Clear them and add your own.</span>
+    <button id="clearExample" class="btn small ghost" type="button">Clear examples</button>
+  </div>
+
+  <section class="panel">
+    <h2>Next 30 days</h2>
+    <p class="sub">Each bar is a day. Orange means a free trial turns into a paid plan.</p>
+    <div id="strip" class="strip" role="img" aria-label="Charges over the next 30 days"></div>
+    <div class="strip-axis"><span>Today</span><span id="axisMid"></span><span id="axisEnd"></span></div>
+    <ul id="upcoming" class="upcoming"></ul>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Your subscriptions</h2>
+      <p class="sub">Mark anything you haven't used this month. Drip adds it to what you could save.</p>
+      <ul id="subs" class="subs"></ul>
+    </section>
+
+    <div style="display:grid;gap:22px">
+      <section class="panel">
+        <h2 id="formTitle">Add a subscription</h2>
+        <p class="sub">Tap a common one or type your own. Prices are typical, so check yours.</p>
+        <div id="chips" class="chips"></div>
+        <form id="form" novalidate>
+          <div class="field"><label for="fName">Name</label><input id="fName" required placeholder="e.g. Netflix"></div>
+          <div class="row">
+            <div class="field"><label for="fPrice">Price</label><input id="fPrice" type="number" step="0.01" min="0" required placeholder="9.99"></div>
+            <div class="field"><label for="fCycle">Billed</label>
+              <select id="fCycle"><option value="month">Monthly</option><option value="year">Yearly</option><option value="week">Weekly</option><option value="quarter">Every 3 months</option></select></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="fDate">Next charge</label><input id="fDate" type="date" required></div>
+            <div class="field"><label for="fCat">Category</label>
+              <select id="fCat"><option>Streaming</option><option>Music</option><option>Gaming</option><option>Software</option><option>Fitness</option><option>Cloud storage</option><option>News</option><option>Other</option></select></div>
+          </div>
+          <label class="check"><input id="fTrial" type="checkbox"> This is a free trial</label>
+          <p id="formError" class="hint" style="color:var(--warn)" hidden></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn primary" type="submit" id="saveBtn">Add subscription</button>
+            <button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel</button>
+            <span class="limit" id="limitText"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="pro-card" id="proCard">
+        <h2>Drip Pro</h2>
+        <div class="priceline">€2.99 / month · or €24 / year</div>
+        <ul>
+          <li>Unlimited subscriptions (Free has 5)</li>
+          <li>Email and phone reminders 3 days before each charge</li>
+          <li>Connect your bank to find subscriptions automatically</li>
+          <li>Step-by-step cancel guides for 200+ services</li>
+          <li>Share with family and split costs</li>
+        </ul>
+        <button class="btn" type="button" id="openPro">See Pro</button>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle">Go unlimited with Pro</h3>
+    <p id="mText" style="margin:0;color:var(--muted)">Free covers 5 subscriptions. Pro pays for itself the first time it catches a charge you forgot about.</p>
+    <ul>
+      <li>Unlimited subscriptions</li>
+      <li>Reminders before every charge</li>
+      <li>Automatic bank detection</li>
+    </ul>
+    <p class="hint">This is an early version and payments aren't live yet. Turn on Pro preview to try everything.</p>
+    <div class="acts">
+      <button class="btn primary" type="button" id="tryPro">Turn on Pro preview</button>
+      <button class="btn ghost" type="button" id="closeModal">Not now</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+  var FREE_LIMIT = 5;
+  var KEY = 'drip.v1';
+  var PRESETS = [
+    ['Netflix',13.99,'Streaming','#B81D24'],['Spotify',11.99,'Music','#1A9E4B'],
+    ['YouTube Premium',13.99,'Streaming','#CC1F1F'],['Disney+',9.99,'Streaming','#1D3C8F'],
+    ['Xbox Game Pass',14.99,'Gaming','#1F7A1F'],['PlayStation Plus',8.99,'Gaming','#1B4DB1'],
+    ['ChatGPT Plus',23,'Software','#2B6F5E'],['iCloud+',2.99,'Cloud storage','#3A7BD5'],
+    ['Amazon Prime',8.99,'Streaming','#1F6FA3'],['Gym',30,'Fitness','#8A4B12']
+  ];
+  var CAT_COLORS = {Streaming:'#7A3B8F',Music:'#1A9E4B',Gaming:'#2E6B2E',Software:'#2B6F5E',Fitness:'#8A4B12','Cloud storage':'#3A7BD5',News:'#5A5A5A',Other:'#4B5E58'};
+
+  function $(id){return document.getElementById(id)}
+  function iso(d){var m=d.getMonth()+1,day=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day}
+  function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+  function today(){var d=new Date();d.setHours(0,0,0,0);return d}
+  function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
+  function addCycle(d,c){var x=new Date(d);
+    if(c==='week')x.setDate(x.getDate()+7);
+    else if(c==='month')x.setMonth(x.getMonth()+1);
+    else if(c==='quarter')x.setMonth(x.getMonth()+3);
+    else x.setFullYear(x.getFullYear()+1);return x}
+  function monthly(s){var p=+s.price;return s.cycle==='week'?p*52/12:s.cycle==='quarter'?p/3:s.cycle==='year'?p/12:p}
+  function daysBetween(a,b){return Math.round((b-a)/86400000)}
+  function uid(){return Math.random().toString(36).slice(2,9)}
+
+  function sample(){
+    var t=today();
+    return [
+      {id:uid(),name:'Netflix',price:13.99,cycle:'month',next:iso(addDays(t,3)),cat:'Streaming',color:'#B81D24',used:true,trial:false},
+      {id:uid(),name:'Spotify',price:11.99,cycle:'month',next:iso(addDays(t,9)),cat:'Music',color:'#1A9E4B',used:true,trial:false},
+      {id:uid(),name:'Xbox Game Pass',price:14.99,cycle:'month',next:iso(addDays(t,16)),cat:'Gaming',color:'#1F7A1F',used:false,trial:false},
+      {id:uid(),name:'Disney+',price:0,cycle:'month',next:iso(addDays(t,5)),cat:'Streaming',color:'#1D3C8F',used:false,trial:true,after:9.99},
+      {id:uid(),name:'iCloud+',price:29.99,cycle:'year',next:iso(addDays(t,24)),cat:'Cloud storage',color:'#3A7BD5',used:true,trial:false}
+    ];
+  }
+
+  var state;
+  try{ state = JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ state=null; }
+  if(!state || !Array.isArray(state.subs)) state = {subs:sample(),currency:'€',pro:false,example:true};
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  // roll past dates forward
+  function roll(){
+    var t=today();
+    state.subs.forEach(function(s){
+      var d=parse(s.next), guard=0;
+      while(d<t && guard<500){ d=addCycle(d,s.cycle); guard++;
+        if(s.trial){ s.trial=false; s.price = s.after||s.price; } }
+      s.next=iso(d);
+    });
+  }
+
+  function money(n){ var c=state.currency; var v=(Math.round(n*100)/100).toFixed(2); return c+v; }
+  function effPrice(s){ return s.trial ? (s.after||0) : +s.price; }
+  function effMonthly(s){ return monthly({price:effPrice(s),cycle:s.cycle}); }
+
+  var editingId = null, confirmId = null;
+
+  function render(){
+    roll();
+    var t=today(), subs=state.subs.slice().sort(function(a,b){return a.next<b.next?-1:1});
+    var m=0, save30=0, unused=0;
+    subs.forEach(function(s){ m+= s.trial?0:monthly(s); if(!s.used) unused+=effMonthly(s); });
+
+    // charges in next 30 days (with repeats)
+    var charges=[];
+    subs.forEach(function(s){
+      var d=parse(s.next), first=true, g=0;
+      while(daysBetween(t,d)<30 && g<40){
+        var amt = (s.trial&&first)? (s.after||0) : (first? +s.price : (s.after||+s.price));
+        if(s.trial&&!first) amt = s.after||0;
+        charges.push({s:s,day:daysBetween(t,d),amt:s.trial&&first?(s.after||0):(s.trial?(s.after||0):+s.price),trialEnd:s.trial&&first});
+        d=addCycle(d,s.cycle); first=false; g++;
+      }
+    });
+    charges.forEach(function(c){ save30+=c.amt; });
+
+    $('bigMonthly').textContent = money(m);
+    $('statYear').textContent = money(m*12);
+    $('statCount').textContent = subs.length;
+    $('stat30').textContent = money(save30);
+    $('statSave').textContent = money(unused*12);
+    $('exampleBar').hidden = !state.example;
+    $('currency').value = state.currency;
+    $('planPill').textContent = state.pro?'Pro':'Free';
+    $('planPill').className = 'pill '+(state.pro?'pro':'free');
+    $('proCard').hidden = state.pro;
+    $('limitText').innerHTML = state.pro ? '' : '<b>'+subs.length+'</b> of '+FREE_LIMIT+' on Free';
+
+    // strip
+    var byDay=new Array(30).fill(0), trialDay=new Array(30).fill(false);
+    charges.forEach(function(c){ byDay[c.day]+=c.amt; if(c.trialEnd) trialDay[c.day]=true; });
+    var max=Math.max.apply(null,byDay.concat([1]));
+    var strip=$('strip'); strip.innerHTML='';
+    for(var i=0;i<30;i++){
+      var el=document.createElement('div');
+      el.className='day'+(byDay[i]>0?' hit':'')+(trialDay[i]?' trial':'');
+      var h = byDay[i]>0 ? Math.max(14, Math.round(byDay[i]/max*70)) : 6;
+      el.style.height=h+'px';
+      el.title = iso(addDays(t,i)) + (byDay[i]>0?' · '+money(byDay[i]):'');
+      if(byDay[i]>0){ var a=document.createElement('span'); a.className='amt'; a.textContent=money(byDay[i]).replace('.00',''); el.appendChild(a); }
+      strip.appendChild(el);
+    }
+    var fmt={month:'short',day:'numeric'};
+    $('axisMid').textContent = addDays(t,15).toLocaleDateString(undefined,fmt);
+    $('axisEnd').textContent = addDays(t,29).toLocaleDateString(undefined,fmt);
+
+    var up=$('upcoming'); up.innerHTML='';
+    charges.sort(function(a,b){return a.day-b.day}).slice(0,5).forEach(function(c){
+      var li=document.createElement('li');
+      var label = c.day===0?'Today':c.day===1?'Tomorrow':'In '+c.day+' days';
+      li.innerHTML='<span><b></b> <span class="meta" style="display:inline"></span></span><span style="display:flex;gap:10px;align-items:center"><span class="num"></span><span class="when"></span></span>';
+      li.querySelector('b').textContent=c.s.name;
+      li.querySelector('.meta').textContent = c.trialEnd?'· trial ends, starts charging':'';
+      li.querySelector('.num').textContent=money(c.amt);
+      var w=li.querySelector('.when'); w.textContent=label; if(c.day<=3) w.classList.add('soon');
+      up.appendChild(li);
+    });
+    if(!charges.length){ up.innerHTML='<li class="empty">No charges in the next 30 days.</li>'; }
+
+    // list
+    var ul=$('subs'); ul.innerHTML='';
+    if(!subs.length) ul.innerHTML='<li class="empty">Nothing here yet. Add your first subscription.</li>';
+    subs.forEach(function(s){
+      var li=document.createElement('li'); li.className='subrow';
+      var d=daysBetween(t,parse(s.next));
+      var cyc={week:'week',month:'month',quarter:'3 months',year:'year'}[s.cycle];
+      li.innerHTML =
+        '<div class="logo"></div>'+
+        '<div><div class="name"></div><div class="meta"><span class="c"></span><span class="n"></span></div></div>'+
+        '<div class="right"><div class="price"></div><div class="row-actions"></div></div>';
+      var logo=li.querySelector('.logo'); logo.textContent=s.name.charAt(0).toUpperCase(); logo.style.background=s.color||CAT_COLORS[s.cat]||'#4B5E58';
+      li.querySelector('.name').textContent=s.name;
+      li.querySelector('.c').textContent=s.cat;
+      li.querySelector('.n').textContent='· next '+(d===0?'today':d===1?'tomorrow':'in '+d+' days');
+      var meta=li.querySelector('.meta');
+      if(s.trial){ var tg=document.createElement('span'); tg.className='tag warn'; tg.textContent='Trial · then '+money(s.after||0); meta.appendChild(tg); }
+      if(!s.used){ var tu=document.createElement('span'); tu.className='tag warn'; tu.textContent='Not used'; meta.appendChild(tu); }
+      li.querySelector('.price').textContent = s.trial ? 'Free now' : money(+s.price)+' / '+cyc;
+      var acts=li.querySelector('.row-actions');
+      function btn(txt,cls,fn){var b=document.createElement('button');b.type='button';b.className='link '+(cls||'');b.textContent=txt;b.onclick=fn;acts.appendChild(b)}
+      btn(s.used?'Mark unused':'Mark used','',function(){s.used=!s.used;save();render();});
+      btn('Edit','',function(){startEdit(s)});
+      if(confirmId===s.id){ btn('Tap again to delete','danger',function(){ state.subs=state.subs.filter(function(x){return x.id!==s.id}); confirmId=null; save(); render(); toast('Deleted '+s.name); }); }
+      else btn('Delete','danger',function(){ confirmId=s.id; render(); });
+      ul.appendChild(li);
+    });
+  }
+
+  // chips
+  PRESETS.forEach(function(p){
+    var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=p[0];
+    b.onclick=function(){ $('fName').value=p[0]; $('fPrice').value=p[1]; $('fCat').value=p[2]; $('fCycle').value='month'; $('fName').dataset.color=p[3]; if(!$('fDate').value) $('fDate').value=iso(addDays(today(),7)); $('fPrice').focus(); };
+    $('chips').appendChild(b);
+  });
+  $('fDate').value = iso(addDays(today(),7));
+
+  function startEdit(s){
+    editingId=s.id;
+    $('formTitle').textContent='Edit '+s.name; $('saveBtn').textContent='Save changes'; $('cancelEdit').hidden=false;
+    $('fName').value=s.name; $('fPrice').value= s.trial?(s.after||0):s.price; $('fCycle').value=s.cycle; $('fDate').value=s.next; $('fCat').value=s.cat; $('fTrial').checked=!!s.trial; $('fName').dataset.color=s.color||'';
+    $('fName').focus();
+  }
+  function resetForm(){
+    editingId=null; $('form').reset(); $('fDate').value=iso(addDays(today(),7)); $('fName').dataset.color='';
+    $('formTitle').textContent='Add a subscription'; $('saveBtn').textContent='Add subscription'; $('cancelEdit').hidden=true; $('formError').hidden=true;
+  }
+  $('cancelEdit').onclick=resetForm;
+
+  $('form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var name=$('fName').value.trim(), price=parseFloat($('fPrice').value), date=$('fDate').value, err=$('formError');
+    if(!name){ err.textContent='Add a name, like "Netflix".'; err.hidden=false; return; }
+    if(isNaN(price)||price<0){ err.textContent='Enter the price you pay, for example 9.99.'; err.hidden=false; return; }
+    if(!date){ err.textContent='Pick the date of the next charge.'; err.hidden=false; return; }
+    err.hidden=true;
+    var trial=$('fTrial').checked;
+    var data={name:name,price:trial?0:price,after:trial?price:undefined,cycle:$('fCycle').value,next:date,cat:$('fCat').value,trial:trial,color:$('fName').dataset.color||CAT_COLORS[$('fCat').value]};
+    if(editingId){
+      var s=state.subs.find(function(x){return x.id===editingId}); Object.assign(s,data);
+      toast('Saved '+name);
+    } else {
+      if(state.example){ state.subs=[]; state.example=false; }
+      if(!state.pro && state.subs.length>=FREE_LIMIT){ openModal(); return; }
+      data.id=uid(); data.used=true; state.subs.push(data);
+      toast('Added '+name);
+    }
+    save(); resetForm(); render();
+  });
+
+  $('clearExample').onclick=function(){ state.subs=[]; state.example=false; save(); render(); $('fName').focus(); };
+  $('currency').onchange=function(){ state.currency=this.value; save(); render(); };
+
+  function openModal(){ $('modal').hidden=false; $('tryPro').focus(); }
+  $('openPro').onclick=openModal;
+  $('closeModal').onclick=function(){ $('modal').hidden=true; };
+  $('modal').addEventListener('click',function(e){ if(e.target===this) this.hidden=true; });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') $('modal').hidden=true; });
+  $('tryPro').onclick=function(){ state.pro=true; save(); $('modal').hidden=true; render(); toast('Pro preview is on'); };
+
+  var tt;
+  function toast(msg){ var el=$('toast'); el.textContent=msg; el.hidden=false; clearTimeout(tt); tt=setTimeout(function(){el.hidden=true},2200); }
+
+  render();
+})();
+</script>
