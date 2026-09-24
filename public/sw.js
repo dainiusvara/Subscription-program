@@ -112,3 +112,38 @@ async function trim(cache) {
   const keys = await cache.keys();
   for (const key of keys.slice(0, Math.max(0, keys.length - MAX_ASSETS))) await cache.delete(key);
 }
+
+/* ------------------------------------------------------------------------ */
+/* Reminder notifications (sent by /api/cron/reminders)                     */
+/* ------------------------------------------------------------------------ */
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Drip", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
+      tag: data.tag || "drip-reminder",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const open = windows.find((client) => client.url.startsWith(self.location.origin));
+      if (open) await open.focus();
+      else await self.clients.openWindow(url);
+    })(),
+  );
+});

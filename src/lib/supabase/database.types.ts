@@ -41,6 +41,8 @@ export type Database = {
           id: string
           is_pro: boolean
           pro_preview: boolean
+          remind_email: boolean
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -49,6 +51,8 @@ export type Database = {
           id: string
           is_pro?: boolean
           pro_preview?: boolean
+          remind_email?: boolean
+          timezone?: string
           updated_at?: string
         }
         Update: {
@@ -57,9 +61,70 @@ export type Database = {
           id?: string
           is_pro?: boolean
           pro_preview?: boolean
+          remind_email?: boolean
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reminder_log: {
+        Row: {
+          channel: string
+          charge_date: string
+          sent_at: string
+          subscription_id: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          charge_date: string
+          sent_at?: string
+          subscription_id: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          charge_date?: string
+          sent_at?: string
+          subscription_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -117,7 +182,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      register_push: {
+        Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

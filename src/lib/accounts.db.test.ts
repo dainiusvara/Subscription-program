@@ -140,7 +140,14 @@ describe("sync", () => {
     const pulled = await pullAccount(client, id);
     expect(pulled).toEqual({
       ok: true,
-      data: { subs: [{ ...netflix, used: false }], currency: "USD", pro: false, proPreview: false },
+      data: {
+        subs: [{ ...netflix, used: false }],
+        currency: "USD",
+        pro: false,
+        proPreview: false,
+        remindEmail: true,
+        timezone: "UTC",
+      },
     });
   });
 

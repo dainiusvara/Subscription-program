@@ -10,6 +10,7 @@ import { Brand, Header } from "./Header";
 import { PlusIcon } from "./icons";
 import { NextThirtyDays } from "./NextThirtyDays";
 import { ProCard, ProDialog } from "./Pro";
+import { RemindersPanel } from "./RemindersPanel";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { SubscriptionList } from "./SubscriptionList";
 import { Summary } from "./Summary";
@@ -141,6 +142,14 @@ export function Dashboard() {
               onSubmit={handleSubmit}
               onCancel={resetForm}
             />
+            {snapshot.cloudAvailable && (
+              <RemindersPanel
+                account={account}
+                hasPro={hasPro(state)}
+                onSignIn={() => setDialog("sign-in")}
+                onOpenPro={() => setProOpen(true)}
+              />
+            )}
             {!hasPro(state) && <ProCard onOpen={() => setProOpen(true)} />}
           </div>
         </div>

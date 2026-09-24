@@ -14,6 +14,7 @@ import { CURRENCIES } from "./catalog";
 import { applyOutbox, diffSubs, enqueue, pendingCurrency, withUuid, type OutboxOp } from "./cloud";
 import { cloudConfigured, paymentsEnabled } from "./config";
 import { newId } from "./ids";
+import { disablePush } from "./push";
 import * as transitions from "./state";
 import { STORAGE_KEY, loadState, sanitizeState, sanitizeSubscription, saveState } from "./storage";
 import { authedFetch, getSupabase } from "./supabase/browser";
@@ -22,7 +23,16 @@ import type { CurrencyCode, DripState, ISODate, SubscriptionInput } from "./type
 
 export type Account =
   | { kind: "local" }
-  | { kind: "cloud"; userId: string; email: string; pending: number; syncing: boolean; offline: boolean };
+  | {
+      kind: "cloud";
+      userId: string;
+      email: string;
+      pending: number;
+      syncing: boolean;
+      offline: boolean;
+      /** Email reminders 3 days before each charge (Pro). */
+      remindEmail: boolean;
+    };
 
 export interface Notice {
   id: number;
@@ -49,6 +59,7 @@ interface CloudCache {
   email: string;
   state: DripState;
   outbox: OutboxOp[];
+  remindEmail: boolean;
 }
 
 let snapshot: DripSnapshot | null = null;
@@ -96,7 +107,13 @@ function loadCloud(): CloudCache | null {
     const raw = JSON.parse(storage()?.getItem(CLOUD_KEY) ?? "null");
     const state = sanitizeState(raw?.state);
     if (typeof raw?.userId !== "string" || !state) return null;
-    return { userId: raw.userId, email: typeof raw.email === "string" ? raw.email : "", state, outbox: sanitizeOps(raw.outbox) };
+    return {
+      userId: raw.userId,
+      email: typeof raw.email === "string" ? raw.email : "",
+      state,
+      outbox: sanitizeOps(raw.outbox),
+      remindEmail: raw.remindEmail !== false,
+    };
   } catch {
     return null;
   }
@@ -139,7 +156,15 @@ function build(state: DripState, today: ISODate): DripSnapshot {
     state,
     today,
     account: cloud
-      ? { kind: "cloud", userId: cloud.userId, email: cloud.email, pending: cloud.outbox.length, syncing, offline }
+      ? {
+          kind: "cloud",
+          userId: cloud.userId,
+          email: cloud.email,
+          pending: cloud.outbox.length,
+          syncing,
+          offline,
+          remindEmail: cloud.remindEmail,
+        }
       : { kind: "local" },
     notice,
     cloudAvailable: cloudConfigured,
@@ -268,6 +293,13 @@ async function pull() {
   offline = false;
   const { state: current, today } = read();
   const { data } = result;
+  cloud = { ...cloud, remindEmail: data.remindEmail };
+  // Reminders go out in the user's own time zone: keep it up to date.
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (timezone && timezone !== data.timezone) {
+    // Supabase queries only run once awaited; errors just mean we try again next sync.
+    void supabase.from("profiles").update({ timezone }).eq("id", userId).then(() => undefined);
+  }
   publish(
     transitions.rollState(
       {
@@ -301,6 +333,7 @@ function enterCloud(userId: string, email: string) {
     email,
     outbox: enqueue([], ops),
     state: { version: 1, subs: applyOutbox([], ops), currency: local.currency, pro: false, proPreview: false, example: false },
+    remindEmail: true,
   };
   // The device's list now lives in the account.
   saveState(storage(), { ...local, subs: [], example: false, pro: false, proPreview: false });
@@ -455,6 +488,23 @@ export const dripActions = {
       return false;
     }
   },
+  /** Email reminders on or off. Needs a connection. */
+  async setRemindEmail(on: boolean): Promise<boolean> {
+    const supabase = getSupabase();
+    if (!supabase || !cloud) return false;
+    const { userId } = cloud;
+    cloud = { ...cloud, remindEmail: on };
+    refresh();
+    const { error } = await supabase.from("profiles").update({ remind_email: on }).eq("id", userId);
+    if (!error) {
+      saveCloud(cloud);
+      return true;
+    }
+    if (cloud?.userId === userId) cloud = { ...cloud, remindEmail: !on };
+    refresh();
+    notify("Couldn't save that. Check your connection and try again.");
+    return false;
+  },
   notify,
 };
 
@@ -488,6 +538,8 @@ export const dripAuth = {
   },
   /** Signs out on this device only. */
   async signOut() {
+    // Stop this device's notifications, so the next person using it doesn't get them.
+    await disablePush().catch(() => undefined);
     await getSupabase()?.auth.signOut({ scope: "local" });
   },
   /** Deletes the account and everything in it. */
