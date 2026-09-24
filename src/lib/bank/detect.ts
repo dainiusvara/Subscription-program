@@ -71,8 +71,14 @@ export function merchantKey(description: string): string {
   return words.slice(0, 2).join(" ");
 }
 
-function titleCase(text: string): string {
-  return text.replace(/\b\w/g, (c) => c.toUpperCase());
+/** The merchant's name as the bank wrote it ("FitZone Vilnius"), falling back to title case. */
+function displayName(description: string, key: string): string {
+  const wanted = key.split(" ");
+  const original = description.split(/[^\p{L}\p{N}&'.-]+/u).filter(Boolean);
+  const words = wanted.map((w) => original.find((o) => normalizeName(o) === w) ?? w);
+  return words
+    .map((w) => (w === w.toUpperCase() || w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w))
+    .join(" ");
 }
 
 /** Groups amounts within `tolerance` of each other (e.g. 1.15: a price rise stays one subscription). */
@@ -141,7 +147,7 @@ export function detectSubscriptions(
     const key = service ? `service:${service.id}` : `merchant:${merchantKey(t.description)}`;
     if (key === "merchant:") continue;
     const group = groups.get(key) ?? {
-      name: service ? service.name.replace(/ \(.*\)$/, "") : titleCase(merchantKey(t.description)),
+      name: service ? service.name.replace(/ \(.*\)$/, "") : displayName(t.description, merchantKey(t.description)),
       service,
       items: [],
     };

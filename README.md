@@ -2,9 +2,23 @@
 
 Drip tracks every subscription you pay for, shows the real monthly and yearly total, warns
 before each charge and flags the ones you no longer use. It is an installable web app (PWA)
-built with Next.js, TypeScript and Tailwind CSS.
+built with Next.js, TypeScript and Tailwind CSS, with Supabase (accounts and database),
+Resend and Web Push (reminders) and Stripe (payments).
 
-See [CLAUDE.md](CLAUDE.md) for the product brief, business model, roadmap and current status.
+- **To put it online:** follow [DEPLOY.md](DEPLOY.md), which covers every account step by step.
+- **Product brief, roadmap and status:** [CLAUDE.md](CLAUDE.md).
+
+## What it does
+
+- Monthly and yearly totals, a 30-day chart of upcoming charges, free-trial tracking, and "mark
+  unused" savings
+- Works on the device without an account; sign in with an emailed code to sync across devices
+- Reminders by email and phone notification 3 days before each charge (Pro)
+- Pro at €2.99/month or €24/year through Stripe; the Free plan covers 5 subscriptions
+- Step-by-step cancel guides for 22 popular services (Pro)
+- Finds subscriptions in a bank statement export (CSV), read on the device only (Pro)
+- Family sharing: share subscriptions and split the cost (Pro to create a family, free to join)
+- Installs on phones and computers and works offline
 
 ## Run it on Windows
 
@@ -35,6 +49,9 @@ npm run dev
 
 Open <http://localhost:3000>. The page updates as you edit the code. Press `Ctrl+C` to stop.
 
+Without any settings it runs in device-only mode (no accounts). To try accounts, reminders
+and payments locally, see "Running it all on your PC" at the end of [DEPLOY.md](DEPLOY.md).
+
 ### Try the installable app (production build)
 
 The offline support and the install button only work in a production build:
@@ -55,8 +72,8 @@ address bar, or Drip's own **Install** button in the header.
    If Windows Firewall asks, allow Node.js on **private networks**.
 
 Browsers only allow installing and offline use over HTTPS (or on `localhost`), so over your
-home network the phone shows the app but can't install it. To install it on a phone, deploy
-it to an HTTPS host. That comes with a later roadmap step.
+home network the phone shows the app but can't install it. Once it's deployed (DEPLOY.md), it
+installs on any phone.
 
 ## Scripts
 
@@ -65,33 +82,48 @@ it to an HTTPS host. That comes with a later roadmap step.
 | `npm run dev`        | Development server with live reload                 |
 | `npm run build`      | Production build                                    |
 | `npm start`          | Serve the production build                          |
-| `npm test`           | Unit tests (money, dates, state, storage)           |
+| `npm test`           | Unit tests (money, dates, sync, reminders, bank files, splitting) |
 | `npm run test:watch` | Tests that re-run when you save                     |
+| `npm run test:db`    | Database tests against a local Supabase (needs Docker) |
 | `npm run lint`       | ESLint                                              |
 | `npm run typecheck`  | TypeScript type check                               |
 | `npm run check`      | Lint, typecheck and tests in one go                 |
+| `npm run db:start`   | Start a local Supabase (needs Docker)               |
+| `npm run db:reset`   | Rebuild the local database from the migrations     |
+| `npm run db:types`   | Regenerate TypeScript types from the database       |
+| `npm run stripe:setup` | Create Drip Pro's prices and webhook in Stripe (DEPLOY.md, step 5) |
 
 ## Environment variables
 
-Step 1 needs none: all data stays on the device. Later steps (Supabase, Resend, Stripe) need
-keys. They go in a `.env.local` file in the project folder, which git ignores. Never put
-them in the code. [`.env.example`](.env.example) lists what will be needed.
+Keys go in your hosting's settings, or in a `.env.local` file in the project folder, which git
+ignores. Never put them in the code. [`.env.example`](.env.example) lists every variable and
+[DEPLOY.md](DEPLOY.md) says where each comes from.
 
 ## Project layout
 
 ```
 src/
-  app/                 Next.js App Router: layout, page, manifest, icons, error pages
-  components/          React components (Dashboard ties them together)
+  app/                   Next.js App Router: page, manifest, icons, error pages
+    api/                 Server routes: account, pro-preview, stripe/*, cron/reminders, push/test
+  components/            React components (Dashboard ties them together)
   lib/
-    billing.ts         Money and date logic: totals, 30-day projection, roll-forward, formatting
-    state.ts           Add / edit / delete / free-limit rules as pure functions
-    storage.ts         Loading and validating saved data from localStorage
-    store.ts           The browser store React reads with useDrip()
-    catalog.ts         Presets, categories, currencies, Free limit, Pro price
-    *.test.ts          Vitest unit tests
+    billing.ts           Money and date logic: totals, 30-day projection, roll-forward, formatting
+    state.ts             Add / edit / delete / Free-limit rules as pure functions
+    storage.ts           Loading and validating saved data from localStorage
+    store.ts             The browser store: device-only or signed in, offline outbox, actions
+    cloud.ts, sync.ts    Mapping to database rows, and sending/receiving changes
+    reminders.ts         Which reminders are due and their text; reminder-job.ts sends them
+    payments.ts          Stripe checkout, portal and webhook handling
+    cancel-guides.ts     The cancel guides and name matching
+    bank/                Reading bank statement CSVs and detecting subscriptions
+    family.ts, split.ts  Family sharing and cost splitting
+    *.test.ts            Unit tests;  *.db.test.ts  database tests
+supabase/
+  migrations/            Database tables, security rules and functions (applied in order)
+  templates/             The sign-in code email
+scripts/stripe-setup.mjs One-time Stripe setup
 public/
-  sw.js                Service worker (offline support)
-  icons/               App icons
-prototype/index.html   The original single-file prototype, kept for reference
+  sw.js                  Service worker (offline, notifications)
+  icons/, screenshots/   App icons and store screenshots
+prototype/index.html     The original single-file prototype, kept for reference
 ```

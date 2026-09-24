@@ -40,15 +40,23 @@ export function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get("checkout");
     const join = params.get("join");
-    if (!checkout && !join) return;
+    const add = params.get("add");
+    if (!checkout && !join && !add) return;
     params.delete("checkout");
     params.delete("join");
+    params.delete("add");
     const rest = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
     if (checkout === "success") void dripActions.confirmCheckout();
     else if (checkout) dripActions.notify("Checkout cancelled. You're still on Free.");
     if (join) {
       setTimeout(() => document.getElementById("family-title")?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
+    if (add) {
+      setTimeout(() => {
+        document.getElementById("form-title")?.scrollIntoView({ block: "start" });
+        document.querySelector<HTMLInputElement>('form[aria-labelledby="form-title"] input')?.focus({ preventScroll: true });
+      }, 300);
     }
   }, []);
 
@@ -147,29 +155,28 @@ export function Dashboard() {
         <NextThirtyDays charges={summary.charges} today={today} currency={state.currency} />
 
         <div className="grid items-start gap-[22px] md:grid-cols-[1.4fr_1fr]">
-          <SubscriptionList
-            subs={subs}
-            today={today}
-            currency={state.currency}
-            onEdit={(sub) => setForm((current) => ({ key: current.key + 1, editing: sub }))}
-            onDelete={handleDelete}
-            onToggleUsed={(sub) => dripActions.toggleUsed(sub.id)}
-            onCancelHelp={(sub) => setGuideView({ sub, guide: guideFor(sub) })}
-            onBrowseGuides={() => setGuideView({ sub: null, guide: null })}
-          />
           <div className="grid gap-[22px]">
-            <SubscriptionForm
-              key={form.key}
-              editing={form.editing}
+            <SubscriptionList
+              subs={subs}
               today={today}
-              count={subs.length}
-              hasPro={hasPro(state)}
-              inFamily={account.kind === "cloud" && account.family !== null}
-              nameRef={nameRef}
-              sectionRef={formRef}
-              onSubmit={handleSubmit}
-              onCancel={resetForm}
+              currency={state.currency}
+              onEdit={(sub) => setForm((current) => ({ key: current.key + 1, editing: sub }))}
+              onDelete={handleDelete}
+              onToggleUsed={(sub) => dripActions.toggleUsed(sub.id)}
+              onCancelHelp={(sub) => setGuideView({ sub, guide: guideFor(sub) })}
+              onBrowseGuides={() => setGuideView({ sub: null, guide: null })}
             />
+            {snapshot.cloudAvailable && (
+              <FamilyPanel
+                account={account}
+                hasPro={hasPro(state)}
+                currency={state.currency}
+                joinCode={joinCode}
+                onJoinHandled={() => setJoinCode(null)}
+                onSignIn={() => setDialog("sign-in")}
+                onOpenPro={() => setProOpen(true)}
+              />
+            )}
             <BankImportPanel
               subs={subs}
               today={today}
@@ -187,21 +194,24 @@ export function Dashboard() {
                 return added;
               }}
             />
+          </div>
+          <div className="grid gap-[22px]">
+            <SubscriptionForm
+              key={form.key}
+              editing={form.editing}
+              today={today}
+              count={subs.length}
+              hasPro={hasPro(state)}
+              inFamily={account.kind === "cloud" && account.family !== null}
+              nameRef={nameRef}
+              sectionRef={formRef}
+              onSubmit={handleSubmit}
+              onCancel={resetForm}
+            />
             {snapshot.cloudAvailable && (
               <RemindersPanel
                 account={account}
                 hasPro={hasPro(state)}
-                onSignIn={() => setDialog("sign-in")}
-                onOpenPro={() => setProOpen(true)}
-              />
-            )}
-            {snapshot.cloudAvailable && (
-              <FamilyPanel
-                account={account}
-                hasPro={hasPro(state)}
-                currency={state.currency}
-                joinCode={joinCode}
-                onJoinHandled={() => setJoinCode(null)}
                 onSignIn={() => setDialog("sign-in")}
                 onOpenPro={() => setProOpen(true)}
               />

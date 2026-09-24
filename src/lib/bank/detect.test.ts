@@ -36,7 +36,7 @@ describe("detectSubscriptions", () => {
     const { transactions } = parseStatement(sampleStatement(TODAY));
     const found = detectSubscriptions(transactions, TODAY);
     expect(found.map((c) => [c.name, c.price, c.cycle, c.stopped])).toEqual([
-      ["Fitzone Vilnius", 29, "month", false],
+      ["FitZone Vilnius", 29, "month", false],
       ["Netflix", 13.99, "month", false],
       ["YouTube Premium", 13.99, "month", false],
       ["Spotify Premium", 11.99, "month", false],

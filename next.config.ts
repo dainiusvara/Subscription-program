@@ -9,6 +9,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    // Proves to Android that the Play Store app and this site belong together (see DEPLOY.md, mobile apps).
+    return [{ source: "/.well-known/assetlinks.json", destination: "/api/assetlinks" }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
