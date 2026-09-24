@@ -7,6 +7,7 @@ import { hasPro } from "@/lib/state";
 import { dripActions, useDrip } from "@/lib/store";
 import { guideFor } from "@/lib/cancel-guides";
 import { AccountDialog, SignInDialog } from "./AccountDialogs";
+import { BankImportPanel } from "./BankImport";
 import { CancelGuidesDialog, type GuideView } from "./CancelGuides";
 import type { CurrencyCode, Subscription, SubscriptionInput } from "@/lib/types";
 import { Brand, Header } from "./Header";
@@ -159,6 +160,23 @@ export function Dashboard() {
               sectionRef={formRef}
               onSubmit={handleSubmit}
               onCancel={resetForm}
+            />
+            <BankImportPanel
+              subs={subs}
+              today={today}
+              currency={state.currency}
+              hasPro={hasPro(state)}
+              onOpenPro={() => setProOpen(true)}
+              onAdd={(inputs) => {
+                let added = 0;
+                for (const input of inputs) if (dripActions.add(input)) added++;
+                showToast(
+                  added === inputs.length
+                    ? `Added ${added} ${added === 1 ? "subscription" : "subscriptions"} from your bank statement`
+                    : `Added ${added} of ${inputs.length}. The Free plan covers 5 subscriptions.`,
+                );
+                return added;
+              }}
             />
             {snapshot.cloudAvailable && (
               <RemindersPanel

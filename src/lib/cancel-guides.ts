@@ -3,7 +3,7 @@
  * which has the latest steps; menus change, so the steps here are a summary.
  * Links and steps were checked against the official pages in September 2026.
  */
-import type { Subscription } from "./types";
+import type { Category, Subscription } from "./types";
 
 export interface CancelGuide {
   id: string;
@@ -12,6 +12,8 @@ export interface CancelGuide {
   aliases: string[];
   /** The service's official help page for cancelling, if there is one. */
   url: string | null;
+  /** Used when a subscription is found in a bank statement. */
+  category: Category;
   steps: string[];
   notes: string[];
 }
@@ -27,6 +29,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Netflix",
     aliases: ["netflix"],
     url: "https://help.netflix.com/en/node/407",
+    category: "Streaming",
     steps: [
       "Sign in at netflix.com and open Manage your membership (Account → Membership).",
       "Select Cancel.",
@@ -42,6 +45,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Spotify Premium",
     aliases: ["spotify", "spotify premium"],
     url: "https://support.spotify.com/article/cancel-premium/",
+    category: "Music",
     steps: [
       "Sign in at spotify.com and go to Manage your plan.",
       "Select Cancel subscription and confirm.",
@@ -56,6 +60,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "YouTube Premium",
     aliases: ["youtube premium", "youtube music", "youtube"],
     url: "https://support.google.com/youtube/answer/6308278",
+    category: "Streaming",
     steps: [
       "Go to youtube.com/paid_memberships and sign in.",
       "Select your membership, then Deactivate or Cancel membership.",
@@ -68,6 +73,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Disney+",
     aliases: ["disney", "disney plus"],
     url: "https://help.disneyplus.com/article/disneyplus-cancel",
+    category: "Streaming",
     steps: [
       "Sign in at disneyplus.com in a browser (not the TV app).",
       "Open your profile, then Account, and select your Disney+ subscription.",
@@ -84,6 +90,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Xbox Game Pass",
     aliases: ["xbox game pass", "game pass", "xbox"],
     url: "https://support.xbox.com/en-US/help/subscriptions-billing/manage-subscriptions/cancel-recurring-billing-or-subscription",
+    category: "Gaming",
     steps: [
       "Go to account.microsoft.com/services and sign in with the account that pays for it.",
       "Find Game Pass and select Manage.",
@@ -96,6 +103,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "PlayStation Plus",
     aliases: ["playstation plus", "ps plus", "playstation", "psn"],
     url: "https://www.playstation.com/en-us/support/store/cancel-ps-store-subscription/",
+    category: "Gaming",
     steps: [
       "On PS5: Settings → Users and Accounts → Account → Payment and Subscriptions → Subscriptions.",
       "Select PlayStation Plus, then Cancel Subscription (or Turn Off Auto-Renew).",
@@ -108,6 +116,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Nintendo Switch Online",
     aliases: ["nintendo switch online", "switch online", "nintendo"],
     url: "https://en-americas-support.nintendo.com/app/answers/detail/a_id/41196",
+    category: "Gaming",
     steps: [
       "Go to accounts.nintendo.com and sign in with the account that bought the membership.",
       "Select Nintendo Switch Online.",
@@ -123,6 +132,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "ChatGPT Plus",
     aliases: ["chatgpt", "chat gpt", "openai"],
     url: "https://help.openai.com/en/articles/7232927-how-do-i-cancel-my-chatgpt-plus-subscription",
+    category: "Software",
     steps: [
       "Sign in at chatgpt.com.",
       "Open your profile icon → Settings → Billing (or Account).",
@@ -138,6 +148,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "iCloud+",
     aliases: ["icloud", "icloud plus"],
     url: "https://support.apple.com/en-us/108318",
+    category: "Cloud storage",
     steps: [
       "On iPhone or iPad, open Settings and tap your name.",
       "Tap Subscriptions, then iCloud+.",
@@ -150,6 +161,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Apple subscriptions (Music, TV+, Arcade, One, App Store)",
     aliases: ["apple music", "apple tv", "apple one", "apple arcade", "apple fitness", "apple news", "app store", "apple"],
     url: "https://support.apple.com/en-us/118428",
+    category: "Other",
     steps: [
       "iPhone or iPad: open Settings, tap your name, then Subscriptions.",
       "Tap the subscription, then Cancel Subscription.",
@@ -165,6 +177,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Google Play subscriptions",
     aliases: ["google play", "play store", "play pass"],
     url: "https://support.google.com/googleplay/answer/7018481",
+    category: "Other",
     steps: [
       "Open subscriptions on Google Play (Play Store app → your profile icon → Payments & subscriptions → Subscriptions).",
       "Select the subscription.",
@@ -177,6 +190,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Google One",
     aliases: ["google one", "google ai pro", "google storage"],
     url: "https://support.google.com/googleone/answer/9056360",
+    category: "Cloud storage",
     steps: [
       "Go to one.google.com (or open the Google One app).",
       "Open Settings.",
@@ -192,6 +206,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Microsoft 365",
     aliases: ["microsoft 365", "office 365", "microsoft office", "m365", "onedrive"],
     url: "https://support.microsoft.com/en-us/accounts-billing/subscriptions/cancel-a-microsoft-365-subscription",
+    category: "Software",
     steps: [
       "Go to account.microsoft.com/services and sign in with the account that pays for it.",
       "Find Microsoft 365 and select Cancel subscription (it may say Upgrade or Cancel).",
@@ -207,6 +222,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Adobe Creative Cloud",
     aliases: ["adobe", "creative cloud", "photoshop", "lightroom", "acrobat", "illustrator", "premiere"],
     url: "https://helpx.adobe.com/account/individual/subscriptions-and-plans/renewals-and-cancellations/cancel-adobe-subscription.html",
+    category: "Software",
     steps: [
       "Sign in at account.adobe.com and open Plans and payment.",
       "Select Manage plan, then Cancel your plan.",
@@ -222,6 +238,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Dropbox",
     aliases: ["dropbox"],
     url: "https://help.dropbox.com/plans/downgrade-dropbox-individual-plans",
+    category: "Cloud storage",
     steps: [
       "Sign in at dropbox.com.",
       "Click your avatar → Manage account → Change plan.",
@@ -237,6 +254,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Canva Pro",
     aliases: ["canva"],
     url: "https://www.canva.com/help/cancel-canva-plan/",
+    category: "Software",
     steps: [
       "On the Canva homepage, open your account menu.",
       "Select Cancel plan, then Continue cancellation.",
@@ -249,6 +267,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Amazon Prime",
     aliases: ["amazon prime", "prime video", "amazon"],
     url: "https://www.amazon.com/gp/help/customer/display.html?nodeId=GTJQ7QZY7QL2HK4Y",
+    category: "Streaming",
     steps: [
       "Sign in to Amazon for your country (amazon.de, amazon.co.uk, amazon.com…).",
       "Go to Your Account → Prime Membership (or Memberships & Subscriptions).",
@@ -264,6 +283,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Audible",
     aliases: ["audible"],
     url: "https://help.audible.com/s/article/cancel-membership?language=en_US",
+    category: "Other",
     steps: [
       "Sign in on the Audible website for your country (not the app).",
       "Open Account details (or Membership details).",
@@ -279,6 +299,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "HBO Max",
     aliases: ["hbo max", "max", "hbo"],
     url: "https://help.hbomax.com/us/Answer/Detail/000002526",
+    category: "Streaming",
     steps: [
       "Go to HBOMax.com/subscription and sign in. The top of the page shows who bills you.",
       "If HBO Max bills you directly, choose to cancel your subscription there.",
@@ -291,6 +312,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Paramount+",
     aliases: ["paramount", "paramount plus"],
     url: "https://help.paramountplus.com/s/article/PD-How-can-I-cancel-my-Paramount-subscription",
+    category: "Streaming",
     steps: [
       "Sign in at paramountplus.com in a browser.",
       "Open Account, then find your subscription.",
@@ -303,6 +325,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Deezer",
     aliases: ["deezer"],
     url: "https://support.deezer.com/hc/en-gb/articles/214349245-Cancel-Your-Deezer-Subscription",
+    category: "Music",
     steps: [
       "Sign in at deezer.com or open the Deezer app.",
       "Open Account settings and your subscription.",
@@ -318,6 +341,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "LinkedIn Premium",
     aliases: ["linkedin", "linkedin premium"],
     url: "https://www.linkedin.com/help/linkedin/answer/a545578",
+    category: "Software",
     steps: [
       "On a computer: open the Me menu → Premium features.",
       "Select Manage subscription (under Plan details).",
@@ -333,6 +357,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Gyms and clubs",
     aliases: ["gym", "fitness", "health club", "sports club", "yoga", "pilates", "crossfit"],
     url: null,
+    category: "Fitness",
     steps: [
       "Find your contract or membership terms and check the notice period.",
       "Cancel in writing (email or letter) and ask for a written confirmation.",
@@ -351,6 +376,7 @@ export const GENERAL_GUIDE: CancelGuide = {
   name: "Any other subscription",
   aliases: [],
   url: null,
+  category: "Other",
   steps: [
     "Check who charges you: the name on your card statement, or the first receipt email.",
     "Bought in an iPhone or Android app? Cancel under Apple subscriptions or Google Play subscriptions.",

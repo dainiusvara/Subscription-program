@@ -20,6 +20,8 @@ export function Modal({
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** Set while we close the dialog ourselves, so that close isn't reported as the user's. */
+  const closingRef = useRef(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -28,6 +30,7 @@ export function Modal({
       dialog.showModal();
       initialFocus?.current?.focus();
     } else if (!open && dialog.open) {
+      closingRef.current = true;
       dialog.close();
     }
   }, [open, initialFocus]);
@@ -36,7 +39,11 @@ export function Modal({
     <dialog
       ref={dialogRef}
       aria-labelledby={labelledBy}
-      onClose={onClose}
+      // Only closes the user caused (Escape, the backdrop) are reported.
+      onClose={() => {
+        if (closingRef.current) closingRef.current = false;
+        else onClose();
+      }}
       // A click on the dialog element itself (not its content) is a click on the backdrop.
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
