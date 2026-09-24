@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
-import { dripAuth, type Account } from "@/lib/store";
+import { dripActions, dripAuth, type Account } from "@/lib/store";
 import type { DripState } from "@/lib/types";
 import { Modal } from "./Modal";
 import { Button, cx } from "./ui";
@@ -179,6 +179,18 @@ export function syncStatus(account: Extract<Account, { kind: "cloud" }>): string
   return "Everything is saved to your account";
 }
 
+const DATE = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric" });
+
+function planText(state: DripState, account: Extract<Account, { kind: "cloud" }>): string {
+  const until = account.proUntil ? DATE.format(new Date(account.proUntil)) : null;
+  if (state.pro) {
+    if (account.proStatus === "canceling" && until) return `Pro until ${until} (cancelled)`;
+    if (account.proStatus === "past_due") return "Pro, but the last payment failed. Update your card under Manage subscription.";
+    return until ? `Pro, renews ${until}` : "Pro";
+  }
+  return state.proPreview ? "Pro preview" : "Free";
+}
+
 export function AccountDialog({
   open,
   onClose,
@@ -195,7 +207,8 @@ export function AccountDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const plan = state.pro ? "Pro" : state.proPreview ? "Pro preview" : "Free";
+  const plan = planText(state, account);
+  const canManage = account.proStatus !== null;
 
   function close() {
     setConfirmDelete(false);
@@ -255,6 +268,11 @@ export function AccountDialog({
           <Button ref={closeRef} onClick={close}>
             Done
           </Button>
+          {canManage && (
+            <Button variant="ghost" onClick={() => void dripActions.openBillingPortal()}>
+              Manage subscription
+            </Button>
+          )}
           <Button
             variant="ghost"
             onClick={async () => {

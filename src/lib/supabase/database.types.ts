@@ -34,6 +34,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          id: boolean
+          payments_live: boolean
+        }
+        Insert: {
+          id?: boolean
+          payments_live?: boolean
+        }
+        Update: {
+          id?: boolean
+          payments_live?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -41,7 +56,12 @@ export type Database = {
           id: string
           is_pro: boolean
           pro_preview: boolean
+          pro_status: string | null
+          pro_until: string | null
           remind_email: boolean
+          stripe_customer_id: string | null
+          stripe_event_at: string | null
+          stripe_subscription_id: string | null
           timezone: string
           updated_at: string
         }
@@ -51,7 +71,12 @@ export type Database = {
           id: string
           is_pro?: boolean
           pro_preview?: boolean
+          pro_status?: string | null
+          pro_until?: string | null
           remind_email?: boolean
+          stripe_customer_id?: string | null
+          stripe_event_at?: string | null
+          stripe_subscription_id?: string | null
           timezone?: string
           updated_at?: string
         }
@@ -61,7 +86,12 @@ export type Database = {
           id?: string
           is_pro?: boolean
           pro_preview?: boolean
+          pro_status?: string | null
+          pro_until?: string | null
           remind_email?: boolean
+          stripe_customer_id?: string | null
+          stripe_event_at?: string | null
+          stripe_subscription_id?: string | null
           timezone?: string
           updated_at?: string
         }
@@ -182,6 +212,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      payments_live: { Args: never; Returns: boolean }
       register_push: {
         Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
         Returns: undefined

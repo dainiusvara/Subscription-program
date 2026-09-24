@@ -32,6 +32,9 @@ export type Account =
       offline: boolean;
       /** Email reminders 3 days before each charge (Pro). */
       remindEmail: boolean;
+      /** Paid Pro details from Stripe. */
+      proStatus: string | null;
+      proUntil: string | null;
     };
 
 export interface Notice {
@@ -60,6 +63,8 @@ interface CloudCache {
   state: DripState;
   outbox: OutboxOp[];
   remindEmail: boolean;
+  proStatus: string | null;
+  proUntil: string | null;
 }
 
 let snapshot: DripSnapshot | null = null;
@@ -113,6 +118,8 @@ function loadCloud(): CloudCache | null {
       state,
       outbox: sanitizeOps(raw.outbox),
       remindEmail: raw.remindEmail !== false,
+      proStatus: typeof raw.proStatus === "string" ? raw.proStatus : null,
+      proUntil: typeof raw.proUntil === "string" ? raw.proUntil : null,
     };
   } catch {
     return null;
@@ -164,6 +171,8 @@ function build(state: DripState, today: ISODate): DripSnapshot {
           syncing,
           offline,
           remindEmail: cloud.remindEmail,
+          proStatus: cloud.proStatus,
+          proUntil: cloud.proUntil,
         }
       : { kind: "local" },
     notice,
@@ -293,7 +302,7 @@ async function pull() {
   offline = false;
   const { state: current, today } = read();
   const { data } = result;
-  cloud = { ...cloud, remindEmail: data.remindEmail };
+  cloud = { ...cloud, remindEmail: data.remindEmail, proStatus: data.proStatus, proUntil: data.proUntil };
   // Reminders go out in the user's own time zone: keep it up to date.
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (timezone && timezone !== data.timezone) {
@@ -334,6 +343,8 @@ function enterCloud(userId: string, email: string) {
     outbox: enqueue([], ops),
     state: { version: 1, subs: applyOutbox([], ops), currency: local.currency, pro: false, proPreview: false, example: false },
     remindEmail: true,
+    proStatus: null,
+    proUntil: null,
   };
   // The device's list now lives in the account.
   saveState(storage(), { ...local, subs: [], example: false, pro: false, proPreview: false });
@@ -505,8 +516,40 @@ export const dripActions = {
     notify("Couldn't save that. Check your connection and try again.");
     return false;
   },
+  /** Goes to Stripe Checkout to pay for Pro. Resolves only if it failed. */
+  async startCheckout(plan: "monthly" | "yearly"): Promise<void> {
+    await openStripePage("/api/stripe/checkout", { plan });
+  },
+  /** Opens Stripe's page for changing plan, card or cancelling. */
+  async openBillingPortal(): Promise<void> {
+    await openStripePage("/api/stripe/portal", {});
+  },
+  /** Back from Stripe Checkout: wait for the payment to be confirmed. */
+  async confirmCheckout() {
+    notify("Payment received. Switching on Pro…");
+    for (let i = 0; i < 15; i++) {
+      await pull();
+      if (read().state.pro) {
+        notify("Welcome to Drip Pro!");
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    notify("Pro is taking longer than usual to switch on. It will appear shortly.");
+  },
   notify,
 };
+
+async function openStripePage(path: string, body: object) {
+  try {
+    const response = await authedFetch(path, { method: "POST", body: JSON.stringify(body) });
+    const result = await response.json();
+    if (!response.ok || !result.url) throw new Error(result.error ?? "No URL");
+    window.location.assign(result.url);
+  } catch (error) {
+    notify(error instanceof Error && !/fetch|network/i.test(error.message) ? error.message : "Couldn't reach Stripe. Check your connection and try again.");
+  }
+}
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
 

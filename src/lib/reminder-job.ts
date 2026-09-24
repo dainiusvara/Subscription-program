@@ -42,6 +42,9 @@ export async function runReminders(
 ): Promise<JobResult> {
   const now = options.now ?? new Date();
   const result: JobResult = { users: 0, emails: 0, pushes: 0, failures: 0 };
+  // Once payments are live, the free preview no longer includes reminders.
+  const { data: config } = await admin.from("app_config").select("payments_live").eq("id", true).maybeSingle();
+  const paymentsLive = config?.payments_live ?? false;
 
   for (let from = 0; ; from += BATCH) {
     const { data: profiles, error } = await admin
@@ -72,6 +75,7 @@ export async function runReminders(
     const sent = new Set((logRes.data ?? []).map((l) => `${l.channel}:${reminderKey(l.subscription_id, l.charge_date)}`));
 
     for (const profile of profiles) {
+      if (!profile.is_pro && paymentsLive) continue;
       const subs = (subsByUser.get(profile.id) ?? []).map((x) => x.sub).filter((s): s is Subscription => s !== null);
       if (subs.length === 0) continue;
       const devices = devicesByUser.get(profile.id) ?? [];

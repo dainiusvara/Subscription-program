@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { sortByNextCharge, summarize } from "@/lib/billing";
+import { paymentsEnabled } from "@/lib/config";
 import { hasPro } from "@/lib/state";
 import { dripActions, useDrip } from "@/lib/store";
 import { AccountDialog, SignInDialog } from "./AccountDialogs";
@@ -26,6 +27,18 @@ export function Dashboard() {
   const blockedAdd = useRef<SubscriptionInput | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+
+  // Back from Stripe Checkout (?checkout=success or ?checkout=cancelled).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (!checkout) return;
+    params.delete("checkout");
+    const rest = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    if (checkout === "success") void dripActions.confirmCheckout();
+    else dripActions.notify("Checkout cancelled. You're still on Free.");
+  }, []);
 
   if (!snapshot) return <DashboardLoading />;
 
@@ -155,7 +168,18 @@ export function Dashboard() {
         </div>
       </Page>
 
-      <ProDialog open={proOpen} onClose={closePro} onEnable={enablePro} />
+      <ProDialog
+        open={proOpen}
+        onClose={closePro}
+        onEnable={enablePro}
+        paymentsEnabled={paymentsEnabled}
+        signedIn={account.kind === "cloud"}
+        onSignIn={() => {
+          closePro();
+          setDialog("sign-in");
+        }}
+        onUpgrade={(plan) => dripActions.startCheckout(plan)}
+      />
       {snapshot.cloudAvailable && (
         <SignInDialog open={dialog === "sign-in"} onClose={() => setDialog(null)} />
       )}

@@ -71,13 +71,16 @@ export interface AccountData {
   proPreview: boolean;
   remindEmail: boolean;
   timezone: string;
+  /** Stripe status: active, canceling (ends at proUntil), past_due, canceled… */
+  proStatus: string | null;
+  proUntil: string | null;
 }
 
 export type PullResult = { ok: true; data: AccountData } | { ok: false; offline: boolean; message: string };
 
 export async function pullAccount(supabase: DripSupabase, userId: string): Promise<PullResult> {
   const [profile, rows] = await Promise.all([
-    supabase.from("profiles").select("currency, is_pro, pro_preview, remind_email, timezone").eq("id", userId).single(),
+    supabase.from("profiles").select("currency, is_pro, pro_preview, remind_email, timezone, pro_status, pro_until").eq("id", userId).single(),
     supabase.from("subscriptions").select(SUBSCRIPTION_COLUMNS).eq("user_id", userId),
   ]);
   const error = profile.error ?? rows.error;
@@ -96,6 +99,8 @@ export async function pullAccount(supabase: DripSupabase, userId: string): Promi
       proPreview: profile.data.pro_preview,
       remindEmail: profile.data.remind_email,
       timezone: profile.data.timezone,
+      proStatus: profile.data.pro_status,
+      proUntil: profile.data.pro_until,
     },
   };
 }

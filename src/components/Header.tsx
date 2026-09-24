@@ -50,9 +50,15 @@ export function Header({
       <div className="flex flex-wrap items-center gap-2">
         <InstallButton />
         {pro ? (
-          <span className={cx(pill, "bg-accent text-accent-ink")} title="You're on Drip Pro">
+          <button
+            type="button"
+            className={cx(pill, "bg-accent text-accent-ink")}
+            onClick={onOpenAccount}
+            title="You're on Drip Pro"
+            aria-label="Plan: Pro. Open your account"
+          >
             Pro
-          </span>
+          </button>
         ) : proPreview ? (
           <button
             type="button"

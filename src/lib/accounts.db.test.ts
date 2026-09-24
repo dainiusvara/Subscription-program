@@ -147,6 +147,8 @@ describe("sync", () => {
         proPreview: false,
         remindEmail: true,
         timezone: "UTC",
+        proStatus: null,
+        proUntil: null,
       },
     });
   });
