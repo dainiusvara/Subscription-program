@@ -113,6 +113,7 @@ function SubscriptionRow({
           <span>· next {relativeDay(daysBetween(today, sub.nextCharge))}</span>
           {sub.trial && <Tag>Trial · then {formatMoney(sub.priceAfterTrial ?? 0, currency)}</Tag>}
           {!sub.used && <Tag>Not used</Tag>}
+          {sub.shared && <Tag tone="good">Shared</Tag>}
         </div>
       </div>
       <div className="grid justify-items-end gap-1 text-right max-md:contents">

@@ -14,6 +14,7 @@ import { Brand, Header } from "./Header";
 import { PlusIcon } from "./icons";
 import { NextThirtyDays } from "./NextThirtyDays";
 import { ProCard, ProDialog } from "./Pro";
+import { FamilyPanel } from "./FamilyPanel";
 import { RemindersPanel } from "./RemindersPanel";
 import { SubscriptionForm } from "./SubscriptionForm";
 import { SubscriptionList } from "./SubscriptionList";
@@ -27,21 +28,28 @@ export function Dashboard() {
   const [proOpen, setProOpen] = useState(false);
   const [dialog, setDialog] = useState<"sign-in" | "account" | null>(null);
   const [guideView, setGuideView] = useState<GuideView | null>(null);
+  /** From an invite link: /?join=CODE (read once; the server render has no URL). */
+  const [joinCode, setJoinCode] = useState<string | null>(readJoinCode);
   /** An add the Free limit blocked, finished if the user turns on Pro preview. */
   const blockedAdd = useRef<SubscriptionInput | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  // Back from Stripe Checkout (?checkout=success or ?checkout=cancelled).
+  // Links into the app: back from Stripe Checkout (?checkout=…) or a family invite (?join=CODE).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get("checkout");
-    if (!checkout) return;
+    const join = params.get("join");
+    if (!checkout && !join) return;
     params.delete("checkout");
+    params.delete("join");
     const rest = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
     if (checkout === "success") void dripActions.confirmCheckout();
-    else dripActions.notify("Checkout cancelled. You're still on Free.");
+    else if (checkout) dripActions.notify("Checkout cancelled. You're still on Free.");
+    if (join) {
+      setTimeout(() => document.getElementById("family-title")?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
   }, []);
 
   if (!snapshot) return <DashboardLoading />;
@@ -156,6 +164,7 @@ export function Dashboard() {
               today={today}
               count={subs.length}
               hasPro={hasPro(state)}
+              inFamily={account.kind === "cloud" && account.family !== null}
               nameRef={nameRef}
               sectionRef={formRef}
               onSubmit={handleSubmit}
@@ -182,6 +191,17 @@ export function Dashboard() {
               <RemindersPanel
                 account={account}
                 hasPro={hasPro(state)}
+                onSignIn={() => setDialog("sign-in")}
+                onOpenPro={() => setProOpen(true)}
+              />
+            )}
+            {snapshot.cloudAvailable && (
+              <FamilyPanel
+                account={account}
+                hasPro={hasPro(state)}
+                currency={state.currency}
+                joinCode={joinCode}
+                onJoinHandled={() => setJoinCode(null)}
                 onSignIn={() => setDialog("sign-in")}
                 onOpenPro={() => setProOpen(true)}
               />
@@ -242,6 +262,12 @@ export function Dashboard() {
       </div>
     </>
   );
+}
+
+function readJoinCode(): string | null {
+  if (typeof window === "undefined") return null;
+  const code = new URLSearchParams(window.location.search).get("join");
+  return code ? code.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 12) : null;
 }
 
 function Page({ header, children }: { header: ReactNode; children: ReactNode }) {

@@ -36,6 +36,8 @@ export interface Subscription {
   /** False when the user marked it as not used this month. */
   used: boolean;
   trial: boolean;
+  /** Shared with the user's family, which splits the cost. */
+  shared?: boolean;
 }
 
 export interface DripState {
@@ -60,4 +62,6 @@ export interface SubscriptionInput {
   trial: boolean;
   /** Preset brand colour, if the user picked a preset. */
   color?: string;
+  /** Share with the family (only offered while in one). */
+  shared?: boolean;
 }

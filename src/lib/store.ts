@@ -14,6 +14,7 @@ import { CURRENCIES } from "./catalog";
 import { applyOutbox, diffSubs, enqueue, pendingCurrency, withUuid, type OutboxOp } from "./cloud";
 import { cloudConfigured, paymentsEnabled } from "./config";
 import { newId } from "./ids";
+import { createFamily, joinFamily, leaveFamily, loadFamily, removeMember, renewInviteCode, type Family } from "./family";
 import { disablePush } from "./push";
 import * as transitions from "./state";
 import { STORAGE_KEY, loadState, sanitizeState, sanitizeSubscription, saveState } from "./storage";
@@ -35,6 +36,8 @@ export type Account =
       /** Paid Pro details from Stripe. */
       proStatus: string | null;
       proUntil: string | null;
+      /** The user's family, if they're in one. */
+      family: Family | null;
     };
 
 export interface Notice {
@@ -65,6 +68,7 @@ interface CloudCache {
   remindEmail: boolean;
   proStatus: string | null;
   proUntil: string | null;
+  family: Family | null;
 }
 
 let snapshot: DripSnapshot | null = null;
@@ -120,6 +124,7 @@ function loadCloud(): CloudCache | null {
       remindEmail: raw.remindEmail !== false,
       proStatus: typeof raw.proStatus === "string" ? raw.proStatus : null,
       proUntil: typeof raw.proUntil === "string" ? raw.proUntil : null,
+      family: sanitizeFamily(raw.family),
     };
   } catch {
     return null;
@@ -154,6 +159,26 @@ function takePending(userId: string): OutboxOp[] {
   }
 }
 
+/** Families come back from the cache as plain JSON; keep only well-formed ones. */
+function sanitizeFamily(raw: unknown): Family | null {
+  const f = raw as Partial<Family> | null;
+  if (!f || typeof f.id !== "string" || typeof f.ownerId !== "string" || !Array.isArray(f.members) || !Array.isArray(f.shared)) {
+    return null;
+  }
+  const shared = f.shared.flatMap((s) => {
+    const sub = sanitizeSubscription(s);
+    return sub && typeof (s as { ownerId?: unknown }).ownerId === "string" ? [{ ...sub, ownerId: (s as { ownerId: string }).ownerId }] : [];
+  });
+  return {
+    id: f.id,
+    name: typeof f.name === "string" ? f.name : "Family",
+    ownerId: f.ownerId,
+    inviteCode: typeof f.inviteCode === "string" ? f.inviteCode : "",
+    members: f.members.filter((m) => typeof m?.userId === "string").map((m) => ({ userId: m.userId, email: String(m.email ?? "") })),
+    shared,
+  };
+}
+
 /* ------------------------------------------------------------------------ */
 /* Snapshot                                                                 */
 /* ------------------------------------------------------------------------ */
@@ -173,6 +198,7 @@ function build(state: DripState, today: ISODate): DripSnapshot {
           remindEmail: cloud.remindEmail,
           proStatus: cloud.proStatus,
           proUntil: cloud.proUntil,
+          family: cloud.family,
         }
       : { kind: "local" },
     notice,
@@ -266,7 +292,7 @@ async function flush() {
   try {
     if (!(await hasSession())) return;
     const { userId } = cloud;
-    const result = await pushOps(supabase, userId, cloud.outbox);
+    const result = await pushOps(supabase, userId, cloud.outbox, cloud.family?.id ?? null);
     if (!cloud || cloud.userId !== userId) return;
     const done = new Set<OutboxOp>([...result.sent, ...result.rejected.map((r) => r.op)]);
     cloud = { ...cloud, outbox: cloud.outbox.filter((op) => !done.has(op)) };
@@ -292,8 +318,15 @@ async function pull() {
   const supabase = getSupabase();
   if (!supabase || !cloud || !(await hasSession())) return;
   const { userId } = cloud;
-  const result = await pullAccount(supabase, userId);
+  const [result, family] = await Promise.all([
+    pullAccount(supabase, userId),
+    loadFamily(supabase).then(
+      (value) => ({ ok: true as const, value }),
+      () => ({ ok: false as const }),
+    ),
+  ]);
   if (!cloud || cloud.userId !== userId) return;
+  if (family.ok) cloud = { ...cloud, family: family.value };
   if (!result.ok) {
     offline = result.offline;
     refresh();
@@ -345,6 +378,7 @@ function enterCloud(userId: string, email: string) {
     remindEmail: true,
     proStatus: null,
     proUntil: null,
+    family: null,
   };
   // The device's list now lives in the account.
   saveState(storage(), { ...local, subs: [], example: false, pro: false, proPreview: false });
@@ -539,6 +573,33 @@ export const dripActions = {
   },
   notify,
 };
+
+/** Family sharing. Each needs a connection; the family reloads afterwards. */
+export const familyActions = {
+  create: (name: string) => familyCall((s) => createFamily(s, name), "Family created. Share the invite code."),
+  join: (code: string) => familyCall((s) => joinFamily(s, code), "You joined the family"),
+  leave: () => familyCall(leaveFamily, "You left the family"),
+  remove: (userId: string) => familyCall((s) => removeMember(s, userId), "Removed from the family"),
+  renewCode: () => familyCall(renewInviteCode, "New invite code made. The old one no longer works."),
+};
+
+async function familyCall<T>(
+  run: (supabase: NonNullable<ReturnType<typeof getSupabase>>) => Promise<{ ok: true; value: T } | { ok: false; message: string }>,
+  success: string,
+): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase || !cloud) return false;
+  // Unsent changes first, so nothing is shared into (or out of) the wrong family.
+  await flush();
+  const result = await run(supabase);
+  if (!result.ok) {
+    notify(result.message);
+    return false;
+  }
+  await pull();
+  notify(success);
+  return true;
+}
 
 async function openStripePage(path: string, body: object) {
   try {

@@ -17,14 +17,19 @@ export interface PushResult {
   offline: boolean;
 }
 
-export async function pushOps(supabase: DripSupabase, userId: string, ops: readonly OutboxOp[]): Promise<PushResult> {
+export async function pushOps(
+  supabase: DripSupabase,
+  userId: string,
+  ops: readonly OutboxOp[],
+  householdId: string | null = null,
+): Promise<PushResult> {
   const result: PushResult = { sent: [], rejected: [], offline: false };
   const upserts = ops.filter((op): op is Extract<OutboxOp, { kind: "upsert" }> => op.kind === "upsert");
   const deletes = ops.filter((op): op is Extract<OutboxOp, { kind: "delete" }> => op.kind === "delete");
   const currency = ops.filter((op) => op.kind === "currency");
 
   if (upserts.length > 0) {
-    const { error } = await supabase.from("subscriptions").upsert(upserts.map((op) => toRow(op.sub, userId)));
+    const { error } = await supabase.from("subscriptions").upsert(upserts.map((op) => toRow(op.sub, userId, householdId)));
     if (!error) {
       result.sent.push(...upserts);
     } else if (isNetworkError(error)) {
@@ -32,7 +37,7 @@ export async function pushOps(supabase: DripSupabase, userId: string, ops: reado
     } else {
       // One refused row fails the whole batch: retry one by one to keep the good ones.
       for (const op of upserts) {
-        const single = await supabase.from("subscriptions").upsert(toRow(op.sub, userId));
+        const single = await supabase.from("subscriptions").upsert(toRow(op.sub, userId, householdId));
         if (!single.error) result.sent.push(op);
         else if (isNetworkError(single.error)) return { ...result, offline: true };
         else result.rejected.push({ op, reason: describeRejection(single.error) });

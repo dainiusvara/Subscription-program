@@ -63,6 +63,7 @@ function applyInput(input: SubscriptionInput, existing?: Subscription): Omit<Sub
     category: input.category,
     color: input.color ?? keptColor ?? CATEGORY_COLORS[input.category],
     trial: input.trial,
+    ...((input.shared ?? existing?.shared) ? { shared: true } : {}),
   };
 }
 

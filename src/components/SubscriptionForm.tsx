@@ -20,6 +20,7 @@ export function SubscriptionForm({
   today,
   count,
   hasPro,
+  inFamily,
   nameRef,
   sectionRef,
   onSubmit,
@@ -29,6 +30,8 @@ export function SubscriptionForm({
   today: ISODate;
   count: number;
   hasPro: boolean;
+  /** Offer "Share with my family". */
+  inFamily: boolean;
   nameRef: RefObject<HTMLInputElement | null>;
   sectionRef: RefObject<HTMLDivElement | null>;
   onSubmit: (input: SubscriptionInput) => void;
@@ -43,6 +46,7 @@ export function SubscriptionForm({
   const [date, setDate] = useState<string>(editing?.nextCharge ?? addDays(today, 7));
   const [category, setCategory] = useState<Category>(editing?.category ?? "Streaming");
   const [trial, setTrial] = useState(editing?.trial ?? false);
+  const [shared, setShared] = useState(editing?.shared ?? false);
   const [preset, setPreset] = useState<Preset | null>(null);
   const [error, setError] = useState<{ field: Field; message: string } | null>(null);
   const priceRef = useRef<HTMLInputElement>(null);
@@ -81,7 +85,7 @@ export function SubscriptionForm({
     if (amount === null) return fail("price", "Enter the price you pay, for example 9.99.");
     if (!isSupportedDate(date)) return fail("date", "Pick the date of the next charge.");
     setError(null);
-    onSubmit({ name: trimmed, price: amount, cycle, nextCharge: date, category, trial, color: preset?.color });
+    onSubmit({ name: trimmed, price: amount, cycle, nextCharge: date, category, trial, color: preset?.color, shared: inFamily && shared });
   }
 
   const errorId = `${id}-error`;
@@ -210,6 +214,18 @@ export function SubscriptionForm({
             />
             This is a free trial
           </label>
+
+          {inFamily && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={shared}
+                onChange={(event) => setShared(event.target.checked)}
+                className="h-4 w-4 accent-accent"
+              />
+              Share with my family and split the cost
+            </label>
+          )}
 
           {error && (
             <p id={errorId} role="alert" className="m-0 text-xs text-warn">

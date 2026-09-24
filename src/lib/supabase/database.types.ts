@@ -49,6 +49,59 @@ export type Database = {
         }
         Relationships: []
       }
+      household_members: {
+        Row: {
+          email: string
+          household_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          email: string
+          household_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          email?: string
+          household_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code: string
+          name?: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -163,6 +216,7 @@ export type Database = {
           color: string
           created_at: string
           cycle: string
+          household_id: string | null
           id: string
           name: string
           next_charge: string
@@ -179,6 +233,7 @@ export type Database = {
           color: string
           created_at?: string
           cycle: string
+          household_id?: string | null
           id?: string
           name: string
           next_charge: string
@@ -195,6 +250,7 @@ export type Database = {
           color?: string
           created_at?: string
           cycle?: string
+          household_id?: string | null
           id?: string
           name?: string
           next_charge?: string
@@ -205,18 +261,48 @@ export type Database = {
           used?: boolean
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_household: {
+        Args: { p_name: string }
+        Returns: {
+          created_at: string
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "households"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      join_household: { Args: { p_code: string }; Returns: string }
+      leave_household: { Args: never; Returns: undefined }
+      my_household_id: { Args: never; Returns: string }
+      new_invite_code: { Args: never; Returns: string }
       payments_live: { Args: never; Returns: boolean }
       register_push: {
         Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
         Returns: undefined
       }
+      remove_household_member: { Args: { p_user: string }; Returns: undefined }
+      renew_invite_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

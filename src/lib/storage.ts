@@ -53,6 +53,7 @@ export function sanitizeSubscription(raw: unknown): Subscription | null {
     color: typeof color === "string" && HEX_COLOR.test(color) ? color : CATEGORY_COLORS[safeCategory],
     used: used !== false,
     trial: isTrial,
+    ...(raw.shared === true ? { shared: true } : {}),
   };
 }
 
