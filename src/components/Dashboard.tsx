@@ -5,7 +5,9 @@ import { sortByNextCharge, summarize } from "@/lib/billing";
 import { paymentsEnabled } from "@/lib/config";
 import { hasPro } from "@/lib/state";
 import { dripActions, useDrip } from "@/lib/store";
+import { guideFor } from "@/lib/cancel-guides";
 import { AccountDialog, SignInDialog } from "./AccountDialogs";
+import { CancelGuidesDialog, type GuideView } from "./CancelGuides";
 import type { CurrencyCode, Subscription, SubscriptionInput } from "@/lib/types";
 import { Brand, Header } from "./Header";
 import { PlusIcon } from "./icons";
@@ -23,6 +25,7 @@ export function Dashboard() {
   const [form, setForm] = useState<{ key: number; editing: Subscription | null }>({ key: 0, editing: null });
   const [proOpen, setProOpen] = useState(false);
   const [dialog, setDialog] = useState<"sign-in" | "account" | null>(null);
+  const [guideView, setGuideView] = useState<GuideView | null>(null);
   /** An add the Free limit blocked, finished if the user turns on Pro preview. */
   const blockedAdd = useRef<SubscriptionInput | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -142,6 +145,8 @@ export function Dashboard() {
             onEdit={(sub) => setForm((current) => ({ key: current.key + 1, editing: sub }))}
             onDelete={handleDelete}
             onToggleUsed={(sub) => dripActions.toggleUsed(sub.id)}
+            onCancelHelp={(sub) => setGuideView({ sub, guide: guideFor(sub) })}
+            onBrowseGuides={() => setGuideView({ sub: null, guide: null })}
           />
           <div className="grid gap-[22px]">
             <SubscriptionForm
@@ -168,6 +173,20 @@ export function Dashboard() {
         </div>
       </Page>
 
+      <CancelGuidesDialog
+        view={guideView}
+        hasPro={hasPro(state)}
+        onClose={() => setGuideView(null)}
+        onOpenPro={() => {
+          setGuideView(null);
+          setProOpen(true);
+        }}
+        onRemove={(sub) => {
+          dripActions.remove(sub.id);
+          if (form.editing?.id === sub.id) resetForm();
+          showToast(`Removed ${sub.name}. That's money saved.`);
+        }}
+      />
       <ProDialog
         open={proOpen}
         onClose={closePro}

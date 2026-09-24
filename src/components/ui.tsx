@@ -42,7 +42,7 @@ export function LinkButton({
     <button
       type="button"
       className={cx(
-        "rounded-md px-1.5 py-0.5 text-xs hover:bg-surface-2 pointer-coarse:px-2 pointer-coarse:py-1.5",
+        "rounded-md px-1.5 py-0.5 text-xs hover:bg-surface-2 pointer-coarse:py-1.5",
         danger ? "text-warn" : "text-muted hover:text-ink",
         className,
       )}

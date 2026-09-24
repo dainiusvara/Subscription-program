@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { daysBetween, formatMoney, relativeDay } from "@/lib/billing";
+import { SERVICE_GUIDE_COUNT } from "@/lib/cancel-guides";
 import { CATEGORY_COLORS, CYCLE_UNITS } from "@/lib/catalog";
 import type { CurrencyCode, ISODate, Subscription } from "@/lib/types";
 import { LinkButton, Panel, Tag } from "./ui";
@@ -16,6 +17,8 @@ export function SubscriptionList({
   onEdit,
   onDelete,
   onToggleUsed,
+  onCancelHelp,
+  onBrowseGuides,
 }: {
   subs: Subscription[];
   today: ISODate;
@@ -23,6 +26,8 @@ export function SubscriptionList({
   onEdit: (sub: Subscription) => void;
   onDelete: (sub: Subscription) => void;
   onToggleUsed: (sub: Subscription) => void;
+  onCancelHelp: (sub: Subscription) => void;
+  onBrowseGuides: () => void;
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -51,6 +56,7 @@ export function SubscriptionList({
               confirming={confirmId === sub.id}
               onEdit={() => onEdit(sub)}
               onToggleUsed={() => onToggleUsed(sub)}
+              onCancelHelp={() => onCancelHelp(sub)}
               onDelete={() => {
                 if (confirmId === sub.id) {
                   setConfirmId(null);
@@ -63,6 +69,9 @@ export function SubscriptionList({
           ))
         )}
       </ul>
+      <button type="button" onClick={onBrowseGuides} className="mt-3 text-sm text-muted underline hover:text-ink">
+        How to cancel: guides for {SERVICE_GUIDE_COUNT} popular services
+      </button>
     </Panel>
   );
 }
@@ -75,6 +84,7 @@ function SubscriptionRow({
   onEdit,
   onToggleUsed,
   onDelete,
+  onCancelHelp,
 }: {
   sub: Subscription;
   today: ISODate;
@@ -83,6 +93,7 @@ function SubscriptionRow({
   onEdit: () => void;
   onToggleUsed: () => void;
   onDelete: () => void;
+  onCancelHelp: () => void;
 }) {
   const initial = (Array.from(sub.name)[0] ?? "?").toUpperCase();
   return (
@@ -116,9 +127,12 @@ function SubscriptionRow({
             </>
           )}
         </div>
-        <div className="flex flex-wrap justify-end gap-1 max-md:col-span-2 max-md:col-start-2 max-md:-ml-1.5 max-md:justify-start">
+        <div className="flex flex-wrap justify-end gap-1 max-md:col-span-2 max-md:col-start-2 max-md:-ml-1.5 max-md:justify-start max-md:gap-0">
           <LinkButton onClick={onToggleUsed} aria-label={`${sub.used ? "Mark unused" : "Mark used"}: ${sub.name}`}>
             {sub.used ? "Mark unused" : "Mark used"}
+          </LinkButton>
+          <LinkButton onClick={onCancelHelp} aria-label={`How to cancel ${sub.name}`}>
+            How to cancel
           </LinkButton>
           <LinkButton onClick={onEdit} aria-label={`Edit ${sub.name}`}>
             Edit

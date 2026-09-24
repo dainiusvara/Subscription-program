@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { SERVICE_GUIDE_COUNT } from "@/lib/cancel-guides";
 import { FREE_LIMIT, PRO_PRICE } from "@/lib/catalog";
 import { Modal } from "./Modal";
 import { Button, buttonClass, cx } from "./ui";
@@ -18,7 +19,7 @@ export function ProCard({ onOpen }: { onOpen: () => void }) {
         <li>Unlimited subscriptions (Free has {FREE_LIMIT})</li>
         <li>Email and phone reminders 3 days before each charge</li>
         <li>Connect your bank to find subscriptions automatically</li>
-        <li>Step-by-step cancel guides for 200+ services</li>
+        <li>Step-by-step cancel guides for {SERVICE_GUIDE_COUNT} popular services</li>
         <li>Share with family and split costs</li>
       </ul>
       <button type="button" onClick={onOpen} className={cx(buttonClass(), "justify-self-start")}>
