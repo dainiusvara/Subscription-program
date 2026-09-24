@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/*
+ * Colour tokens from the prototype. The dark palette applies when the device is
+ * in dark mode (unless the user picked light), or when the user picked dark.
+ */
+:root {
+  --bg: #eef2f0;
+  --surface: #ffffff;
+  --surface-2: #e4eae7;
+  --ink: #15201c;
+  --muted: #5b6a64;
+  --line: #d3dcd8;
+  --accent: #0a6f6a;
+  --accent-ink: #ffffff;
+  --accent-soft: #d5ece9;
+  --warn: #b7410e;
+  --warn-soft: #f8e2d6;
+  --good: #2e7a3a;
+  --good-soft: #ddefdf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d1412;
+    --surface: #151f1c;
+    --surface-2: #1d2a26;
+    --ink: #e4ede9;
+    --muted: #93a59e;
+    --line: #2a3a35;
+    --accent: #3cc3b6;
+    --accent-ink: #06201d;
+    --accent-soft: #143b37;
+    --warn: #f08a55;
+    --warn-soft: #3a2116;
+    --good: #6fcb7c;
+    --good-soft: #17321c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1412;
+  --surface: #151f1c;
+  --surface-2: #1d2a26;
+  --ink: #e4ede9;
+  --muted: #93a59e;
+  --line: #2a3a35;
+  --accent: #3cc3b6;
+  --accent-ink: #06201d;
+  --accent-soft: #143b37;
+  --warn: #f08a55;
+  --warn-soft: #3a2116;
+  --good: #6fcb7c;
+  --good-soft: #17321c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+
+  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-figtree), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, Consolas, monospace;
+}
+
+@theme {
+  /* The prototype switches to one column below 760px. */
+  --breakpoint-md: 47.5625rem;
+}
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Native <dialog> used for the Pro and install sheets. */
+  dialog::backdrop {
+    background: rgb(5 12 10 / 0.55);
+  }
+
+  /* Stop the page behind an open dialog from scrolling. */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+}

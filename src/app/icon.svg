@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .drop { fill: #0A6F6A; } .shine { stroke: #FFFFFF; }
+    @media (prefers-color-scheme: dark) { .drop { fill: #3CC3B6; } .shine { stroke: #06201D; } }
+  </style>
+  <path class="drop" d="M16 3c5 7 9 11.5 9 17a9 9 0 0 1-18 0c0-5.5 4-10 9-17z"/>
+  <path class="shine" d="M12 21a4 4 0 0 0 4 4" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>
