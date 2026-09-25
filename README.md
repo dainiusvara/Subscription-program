@@ -5,7 +5,7 @@ before each charge and flags the ones you no longer use. It is an installable we
 built with Next.js, TypeScript and Tailwind CSS, with Supabase (accounts and database),
 Resend and Web Push (reminders), Stripe (payments) and Enable Banking (bank connections).
 
-- **Live:** <https://www.dripsubs.com> (device-only for now: accounts, reminders and payments come online as the DEPLOY.md steps are done).
+- **Live:** <https://www.dripsubs.com> with accounts and reminders; payments and bank connections come online as the rest of DEPLOY.md is done.
 - **To put it online:** follow [DEPLOY.md](DEPLOY.md), which covers every account step by step.
 - **Product brief, roadmap and status:** [CLAUDE.md](CLAUDE.md).
 

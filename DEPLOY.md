@@ -51,9 +51,13 @@ steps 3 and 4 ask you to add DNS records there.
    `login` opens your browser; `link` asks for the database password from step 2.
    *No command line?* In Supabase open **SQL Editor**, then paste and **Run** each file from the
    `supabase/migrations` folder, oldest first.
-5. Make sign-in emails carry the 6-digit code: **Authentication → Emails → Templates**. For both
-   **Magic link** and **Confirm signup**, set the subject to `Your Drip sign-in code` and replace
-   the body with the contents of `supabase/templates/sign-in-code.html`. Save.
+5. Make sign-in emails carry the 6-digit code:
+   - **Authentication → Sign In / Providers → Email**: set **Email OTP length** to `6` and save. New
+     projects default to 8 digits, and Drip's sign-in screen only accepts 6.
+   - **Authentication → Emails → Templates** (Supabase only unlocks these once custom SMTP from step 7
+     is on): for both **Magic link** and **Confirm signup**, set the subject to
+     `Your Drip sign-in code` and replace the body with the contents of
+     `supabase/templates/sign-in-code.html`. Save.
 6. **Authentication → URL Configuration**: set **Site URL** to your site address (you'll know it
    after step 4; `https://your-domain` or `https://your-project.vercel.app`).
 7. After step 3, connect email sending: **Authentication → Emails → SMTP Settings** → enable
