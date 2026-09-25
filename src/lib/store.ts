@@ -12,14 +12,14 @@ import type { Session } from "@supabase/supabase-js";
 import { todayISO } from "./billing";
 import { CURRENCIES } from "./catalog";
 import { applyOutbox, diffSubs, enqueue, pendingCurrency, withUuid, type OutboxOp } from "./cloud";
-import { cloudConfigured, paymentsEnabled } from "./config";
+import { bankEnabled, cloudConfigured, paymentsEnabled } from "./config";
 import { newId } from "./ids";
 import { createFamily, joinFamily, leaveFamily, loadFamily, removeMember, renewInviteCode, type Family } from "./family";
 import { disablePush } from "./push";
 import * as transitions from "./state";
 import { STORAGE_KEY, loadState, sanitizeState, sanitizeSubscription, saveState } from "./storage";
 import { authedFetch, getSupabase } from "./supabase/browser";
-import { pullAccount, pushOps } from "./sync";
+import { pullAccount, pullBank, pushOps, type BankData } from "./sync";
 import type { CurrencyCode, DripState, ISODate, SubscriptionInput } from "./types";
 
 export type Account =
@@ -38,6 +38,8 @@ export type Account =
       proUntil: string | null;
       /** The user's family, if they're in one. */
       family: Family | null;
+      /** Connected banks and what they found. Null until loaded from the account. */
+      bank: BankData | null;
     };
 
 export interface Notice {
@@ -69,6 +71,7 @@ interface CloudCache {
   proStatus: string | null;
   proUntil: string | null;
   family: Family | null;
+  bank: BankData | null;
 }
 
 let snapshot: DripSnapshot | null = null;
@@ -125,10 +128,20 @@ function loadCloud(): CloudCache | null {
       proStatus: typeof raw.proStatus === "string" ? raw.proStatus : null,
       proUntil: typeof raw.proUntil === "string" ? raw.proUntil : null,
       family: sanitizeFamily(raw.family),
+      bank: sanitizeBank(raw.bank),
     };
   } catch {
     return null;
   }
+}
+
+function sanitizeBank(raw: unknown): BankData | null {
+  const b = raw as Partial<BankData> | null;
+  if (!b || !Array.isArray(b.connections) || !Array.isArray(b.fromBank)) return null;
+  return {
+    connections: b.connections.filter((c) => typeof c?.id === "string" && typeof c.bankName === "string"),
+    fromBank: b.fromBank.filter((id): id is string => typeof id === "string"),
+  };
 }
 
 function saveCloud(cache: CloudCache | null) {
@@ -199,6 +212,7 @@ function build(state: DripState, today: ISODate): DripSnapshot {
           proStatus: cloud.proStatus,
           proUntil: cloud.proUntil,
           family: cloud.family,
+          bank: cloud.bank,
         }
       : { kind: "local" },
     notice,
@@ -318,15 +332,17 @@ async function pull() {
   const supabase = getSupabase();
   if (!supabase || !cloud || !(await hasSession())) return;
   const { userId } = cloud;
-  const [result, family] = await Promise.all([
+  const [result, family, bank] = await Promise.all([
     pullAccount(supabase, userId),
     loadFamily(supabase).then(
       (value) => ({ ok: true as const, value }),
       () => ({ ok: false as const }),
     ),
+    bankEnabled ? pullBank(supabase).catch(() => null) : Promise.resolve(null),
   ]);
   if (!cloud || cloud.userId !== userId) return;
   if (family.ok) cloud = { ...cloud, family: family.value };
+  if (bank) cloud = { ...cloud, bank };
   if (!result.ok) {
     offline = result.offline;
     refresh();
@@ -379,6 +395,7 @@ function enterCloud(userId: string, email: string) {
     proStatus: null,
     proUntil: null,
     family: null,
+    bank: null,
   };
   // The device's list now lives in the account.
   saveState(storage(), { ...local, subs: [], example: false, pro: false, proPreview: false });
@@ -511,6 +528,19 @@ export const dripActions = {
   toggleUsed(id: string) {
     commit(transitions.toggleUsed(read().state, id));
   },
+  /** The user cancelled it with the service: it stays listed as money saved. */
+  cancel(id: string) {
+    const { state, today } = read();
+    commit(transitions.cancelSubscription(state, id, today));
+  },
+  /** Back to paying for it. Returns false when the Free limit blocks it. */
+  restore(id: string): boolean {
+    const { state, today } = read();
+    const result = transitions.restoreSubscription(state, id, today);
+    if (!result.ok) return false;
+    commit(result.state);
+    return true;
+  },
   clearExamples() {
     commit(transitions.clearExamples(read().state));
   },
@@ -610,6 +640,78 @@ async function openStripePage(path: string, body: object) {
   } catch (error) {
     notify(error instanceof Error && !/fetch|network/i.test(error.message) ? error.message : "Couldn't reach Stripe. Check your connection and try again.");
   }
+}
+
+/** Live bank connections (Pro). Each needs a connection to Drip's server. */
+export const bankActions = {
+  /** Banks available in a country, or an error message. */
+  async listBanks(country: string): Promise<{ ok: true; banks: BankChoice[] } | { ok: false; message: string }> {
+    try {
+      const response = await authedFetch(`/api/bank/banks?country=${encodeURIComponent(country)}`);
+      const result = await response.json();
+      if (!response.ok) return { ok: false, message: result.error ?? "Couldn't load the banks." };
+      return { ok: true, banks: result.banks };
+    } catch {
+      return { ok: false, message: "You're offline. Connect to the internet and try again." };
+    }
+  },
+  /** Goes to the bank's own login page. Resolves only if that failed. */
+  async connect(bank: string, country: string): Promise<string> {
+    try {
+      const response = await authedFetch("/api/bank/connect", { method: "POST", body: JSON.stringify({ bank, country }) });
+      const result = await response.json();
+      if (!response.ok || !result.url) return result.error ?? "Couldn't reach your bank. Try again.";
+      window.location.assign(result.url);
+      return "";
+    } catch {
+      return "You're offline. Connect to the internet and try again.";
+    }
+  },
+  /** Reads the connected banks now and shows what was added. */
+  async checkNow(): Promise<void> {
+    notify("Checking your bank…");
+    try {
+      const response = await authedFetch("/api/bank/sync", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      await pull();
+      const added: string[] = result.added ?? [];
+      if (result.problems?.length) notify(result.problems[0]);
+      else if (result.checked === 0) notify("Checked in the last few hours. Banks allow only a few checks a day; Drip also checks every morning.");
+      else if (added.length === 0) notify("Nothing new. Drip checks again every day.");
+      else notify(`Added ${added.join(", ")} from your bank`);
+    } catch (error) {
+      notify(error instanceof Error && error.message ? error.message : "Couldn't reach Drip's server. Try again.");
+    }
+  },
+  async disconnect(id: string, bankName: string): Promise<boolean> {
+    try {
+      const response = await authedFetch("/api/bank/disconnect", { method: "POST", body: JSON.stringify({ id }) });
+      if (!response.ok) throw new Error();
+      await pull();
+      notify(`${bankName} disconnected. Drip no longer reads it.`);
+      return true;
+    } catch {
+      notify("Couldn't disconnect. Check your connection and try again.");
+      return false;
+    }
+  },
+  /** Back from the bank: reads the account again so the new subscriptions show. */
+  async afterConnect(result: { connected: boolean; added: number; failed: boolean }) {
+    if (!result.connected) return;
+    notify("Bank connected. Looking for subscriptions…");
+    await pull();
+    if (result.failed) notify("Bank connected. Drip couldn't read it yet and tries again tomorrow.");
+    else if (result.added > 0) {
+      notify(`Bank connected. Drip found and added ${result.added} ${result.added === 1 ? "subscription" : "subscriptions"}.`);
+    } else notify("Bank connected. Nothing new found yet: Drip checks every day.");
+  },
+};
+
+export interface BankChoice {
+  name: string;
+  country: string;
+  logo: string | null;
 }
 
 export type AuthResult = { ok: true } | { ok: false; message: string };

@@ -47,6 +47,15 @@ describe("row mapping", () => {
     expect(fromRow(row)).toEqual(trial);
   });
 
+  it("round-trips a cancelled subscription, and sees cancelling as a change", () => {
+    const cancelled = sub({ cancelledOn: "2026-09-25" });
+    const row = toRow(cancelled, USER);
+    expect(row.cancelled_on).toBe("2026-09-25");
+    expect(toRow(sub(), USER).cancelled_on).toBeNull();
+    expect(fromRow(row)).toEqual(cancelled);
+    expect(diffSubs([sub()], [cancelled])).toEqual([{ kind: "upsert", sub: cancelled }]);
+  });
+
   it("reads numeric columns sent as strings", () => {
     const row = { ...toRow(sub(), USER), price: "13.99" as unknown as number };
     expect(fromRow(row)?.price).toBe(13.99);

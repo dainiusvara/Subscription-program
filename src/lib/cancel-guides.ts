@@ -12,6 +12,8 @@ export interface CancelGuide {
   aliases: string[];
   /** The service's official help page for cancelling, if there is one. */
   url: string | null;
+  /** The service's own page with the cancel button, where its help page links to one. Needs the user to be signed in there. */
+  cancelUrl?: string;
   /** Used when a subscription is found in a bank statement. */
   category: Category;
   steps: string[];
@@ -19,6 +21,28 @@ export interface CancelGuide {
 }
 
 export const GUIDES_CHECKED = "September 2026";
+
+/**
+ * A cancellation email for services without an online cancel button (gyms,
+ * clubs, small services). The user fills in their details and sends it.
+ */
+export function cancellationEmail(name: string): { subject: string; body: string } {
+  const what = name.trim() ? `my ${name.trim()} membership` : "my membership";
+  return {
+    subject: `Cancellation of ${what}`,
+    body: [
+      "Hello,",
+      "",
+      `Please cancel ${what} at the earliest date my contract allows, and stop all further payments.`,
+      "Please confirm the cancellation and its end date in writing by replying to this email.",
+      "",
+      "Name: ",
+      "Member or customer number (if you have one): ",
+      "",
+      "Thank you.",
+    ].join("\n"),
+  };
+}
 
 const APP_STORE_NOTE =
   "Signed up in the iPhone or Android app? Then Apple or Google bills you: cancel under Apple subscriptions or Google Play subscriptions instead.";
@@ -29,6 +53,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Netflix",
     aliases: ["netflix"],
     url: "https://help.netflix.com/en/node/407",
+    cancelUrl: "https://www.netflix.com/cancelplan",
     category: "Streaming",
     steps: [
       "Sign in at netflix.com and open Manage your membership (Account → Membership).",
@@ -45,6 +70,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Spotify Premium",
     aliases: ["spotify", "spotify premium"],
     url: "https://support.spotify.com/article/cancel-premium/",
+    cancelUrl: "https://www.spotify.com/account/subscription/manage/",
     category: "Music",
     steps: [
       "Sign in at spotify.com and go to Manage your plan.",
@@ -60,6 +86,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "YouTube Premium",
     aliases: ["youtube premium", "youtube music", "youtube"],
     url: "https://support.google.com/youtube/answer/6308278",
+    cancelUrl: "https://www.youtube.com/paid_memberships",
     category: "Streaming",
     steps: [
       "Go to youtube.com/paid_memberships and sign in.",
@@ -177,6 +204,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Google Play subscriptions",
     aliases: ["google play", "play store", "play pass"],
     url: "https://support.google.com/googleplay/answer/7018481",
+    cancelUrl: "https://play.google.com/store/account/subscriptions",
     category: "Other",
     steps: [
       "Open subscriptions on Google Play (Play Store app → your profile icon → Payments & subscriptions → Subscriptions).",
@@ -206,6 +234,7 @@ export const CANCEL_GUIDES: readonly CancelGuide[] = [
     name: "Microsoft 365",
     aliases: ["microsoft 365", "office 365", "microsoft office", "m365", "onedrive"],
     url: "https://support.microsoft.com/en-us/accounts-billing/subscriptions/cancel-a-microsoft-365-subscription",
+    cancelUrl: "https://account.microsoft.com/services/microsoft365",
     category: "Software",
     steps: [
       "Go to account.microsoft.com/services and sign in with the account that pays for it.",

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { sortByNextCharge, summarize } from "@/lib/billing";
-import { paymentsEnabled } from "@/lib/config";
+import { chargeAmount, formatMoney, isActive, monthlyEquivalent, sortByNextCharge, summarize } from "@/lib/billing";
+import { bankEnabled, paymentsEnabled } from "@/lib/config";
 import { hasPro } from "@/lib/state";
-import { dripActions, useDrip } from "@/lib/store";
+import { bankActions, dripActions, useDrip } from "@/lib/store";
 import { guideFor } from "@/lib/cancel-guides";
 import { AccountDialog, SignInDialog } from "./AccountDialogs";
+import { BankChooserDialog, BankPanel, BankPromptDialog } from "./BankConnect";
 import { BankImportPanel } from "./BankImport";
 import { CancelGuidesDialog, type GuideView } from "./CancelGuides";
 import type { CurrencyCode, Subscription, SubscriptionInput } from "@/lib/types";
@@ -30,6 +31,12 @@ export function Dashboard() {
   const [guideView, setGuideView] = useState<GuideView | null>(null);
   /** From an invite link: /?join=CODE (read once; the server render has no URL). */
   const [joinCode, setJoinCode] = useState<string | null>(readJoinCode);
+  const [bankChooser, setBankChooser] = useState<{ open: boolean; preset: { bank: string; country: string } | null }>({
+    open: false,
+    preset: null,
+  });
+  /** Users on this device who answered "Connect your bank?" already. */
+  const [bankPromptDone, setBankPromptDone] = useState<string[]>(readBankPromptDone);
   /** An add the Free limit blocked, finished if the user turns on Pro preview. */
   const blockedAdd = useRef<SubscriptionInput | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -41,12 +48,21 @@ export function Dashboard() {
     const checkout = params.get("checkout");
     const join = params.get("join");
     const add = params.get("add");
-    if (!checkout && !join && !add) return;
-    params.delete("checkout");
-    params.delete("join");
-    params.delete("add");
+    const bank = params.get("bank");
+    const bankAdded = Number(params.get("added") ?? 0);
+    const bankSyncFailed = params.get("sync") === "failed";
+    const bankReason = params.get("reason");
+    if (!checkout && !join && !add && !bank) return;
+    for (const key of ["checkout", "join", "add", "bank", "added", "sync", "reason"]) params.delete(key);
     const rest = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    if (bank === "connected") void bankActions.afterConnect({ connected: true, added: bankAdded, failed: bankSyncFailed });
+    else if (bank === "cancelled") dripActions.notify("Bank not connected. You can try again any time.");
+    else if (bank) {
+      dripActions.notify(
+        bankReason === "expired" ? "That took too long. Connect your bank again." : "Couldn't connect your bank. Try again.",
+      );
+    }
     if (checkout === "success") void dripActions.confirmCheckout();
     else if (checkout) dripActions.notify("Checkout cancelled. You're still on Free.");
     if (join) {
@@ -67,6 +83,37 @@ export function Dashboard() {
   const summary = summarize(subs, today);
 
   const showToast = dripActions.notify;
+  const fromBank = new Set(account.kind === "cloud" ? (account.bank?.fromBank ?? []) : []);
+  // "Connect your bank?" once per user, after their account has loaded and before any bank is connected.
+  const bankPromptOpen =
+    bankEnabled &&
+    account.kind === "cloud" &&
+    account.bank !== null &&
+    account.bank.connections.length === 0 &&
+    !bankPromptDone.includes(account.userId) &&
+    dialog === null &&
+    !proOpen &&
+    guideView === null &&
+    !bankChooser.open;
+
+  function finishBankPrompt() {
+    if (account.kind !== "cloud") return;
+    const done = [...bankPromptDone, account.userId];
+    setBankPromptDone(done);
+    try {
+      window.localStorage.setItem(BANK_PROMPT_KEY, JSON.stringify(done));
+    } catch {
+      // Private mode: the question may come back next visit.
+    }
+  }
+
+  function openBankChooser(preset?: { bank: string; country: string }) {
+    if (!hasPro(state)) {
+      setProOpen(true);
+      return;
+    }
+    setBankChooser({ open: true, preset: preset ?? null });
+  }
   const resetForm = () => setForm((current) => ({ key: current.key + 1, editing: null }));
 
   function handleSubmit(input: SubscriptionInput) {
@@ -164,8 +211,22 @@ export function Dashboard() {
               onDelete={handleDelete}
               onToggleUsed={(sub) => dripActions.toggleUsed(sub.id)}
               onCancelHelp={(sub) => setGuideView({ sub, guide: guideFor(sub) })}
+              onRestore={(sub) => {
+                if (dripActions.restore(sub.id)) showToast(`${sub.name} is back in your list`);
+                else setProOpen(true);
+              }}
               onBrowseGuides={() => setGuideView({ sub: null, guide: null })}
+              fromBank={fromBank}
             />
+            {bankEnabled && snapshot.cloudAvailable && (
+              <BankPanel
+                account={account}
+                hasPro={hasPro(state)}
+                onSignIn={() => setDialog("sign-in")}
+                onOpenPro={() => setProOpen(true)}
+                onConnect={openBankChooser}
+              />
+            )}
             {snapshot.cloudAvailable && (
               <FamilyPanel
                 account={account}
@@ -178,6 +239,7 @@ export function Dashboard() {
               />
             )}
             <BankImportPanel
+              title={bankEnabled && snapshot.cloudAvailable ? "Or import a bank statement" : undefined}
               subs={subs}
               today={today}
               currency={state.currency}
@@ -200,7 +262,7 @@ export function Dashboard() {
               key={form.key}
               editing={form.editing}
               today={today}
-              count={subs.length}
+              count={subs.filter(isActive).length}
               hasPro={hasPro(state)}
               inFamily={account.kind === "cloud" && account.family !== null}
               nameRef={nameRef}
@@ -229,12 +291,35 @@ export function Dashboard() {
           setGuideView(null);
           setProOpen(true);
         }}
-        onRemove={(sub) => {
-          dripActions.remove(sub.id);
+        onCancelled={(sub) => {
+          dripActions.cancel(sub.id);
           if (form.editing?.id === sub.id) resetForm();
-          showToast(`Removed ${sub.name}. That's money saved.`);
+          const yearly = monthlyEquivalent(chargeAmount(sub), sub.cycle) * 12;
+          showToast(`Nice. Cancelling ${sub.name} saves you ${formatMoney(yearly, state.currency)} a year.`);
         }}
       />
+      {bankEnabled && (
+        <>
+          <BankPromptDialog
+            open={bankPromptOpen}
+            hasPro={hasPro(state)}
+            onConnect={() => {
+              finishBankPrompt();
+              openBankChooser();
+            }}
+            onOpenPro={() => {
+              finishBankPrompt();
+              setProOpen(true);
+            }}
+            onClose={finishBankPrompt}
+          />
+          <BankChooserDialog
+            open={bankChooser.open}
+            preset={bankChooser.preset}
+            onClose={() => setBankChooser({ open: false, preset: null })}
+          />
+        </>
+      )}
       <ProDialog
         open={proOpen}
         onClose={closePro}
@@ -272,6 +357,18 @@ export function Dashboard() {
       </div>
     </>
   );
+}
+
+const BANK_PROMPT_KEY = "drip:bank-prompt-done";
+
+function readBankPromptDone(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(BANK_PROMPT_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function readJoinCode(): string | null {

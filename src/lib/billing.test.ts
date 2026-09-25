@@ -287,7 +287,44 @@ describe("summarize matches the prototype", () => {
   });
 
   it("on an empty list", () => {
-    expect(summarize([], TODAY)).toEqual({ monthly: 0, yearly: 0, count: 0, next30: 0, savings: 0, charges: [] });
+    expect(summarize([], TODAY)).toEqual({
+      monthly: 0,
+      yearly: 0,
+      count: 0,
+      next30: 0,
+      savings: 0,
+      saved: 0,
+      cancelledCount: 0,
+      charges: [],
+    });
+  });
+});
+
+describe("cancelled subscriptions", () => {
+  const subs = [
+    sub({ name: "Kept", price: 10, nextCharge: "2026-09-30" }),
+    sub({ name: "Gone", price: 13.99, nextCharge: "2026-09-27", cancelledOn: "2026-09-24", used: false }),
+    sub({ name: "GoneYearly", price: 60, cycle: "year", nextCharge: "2026-10-01", cancelledOn: "2026-09-20" }),
+    sub({ name: "GoneTrial", price: 0, priceAfterTrial: 9.99, trial: true, nextCharge: "2026-09-26", cancelledOn: "2026-09-24" }),
+  ];
+
+  it("leaves them out of totals, charges and 'could save'", () => {
+    const summary = summarize(subs, TODAY);
+    expect(summary.monthly).toBe(10);
+    expect(summary.count).toBe(1);
+    expect(summary.savings).toBe(0);
+    expect(summary.charges.map((c) => c.sub.name)).toEqual(["Kept"]);
+  });
+
+  it("counts what they would have cost per year as saved, trials at their after-trial price", () => {
+    const summary = summarize(subs, TODAY);
+    expect(formatMoney(summary.saved, "EUR")).toBe("€347.76"); // 13.99×12 + 60 + 9.99×12
+    expect(summary.cancelledCount).toBe(3);
+  });
+
+  it("keeps their last charge date instead of rolling it forward", () => {
+    const old = sub({ name: "Old", nextCharge: "2026-08-01", cancelledOn: "2026-07-25" });
+    expect(rollForward(old, TODAY)).toBe(old);
   });
 });
 

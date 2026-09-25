@@ -3,7 +3,7 @@
 Drip tracks every subscription you pay for, shows the real monthly and yearly total, warns
 before each charge and flags the ones you no longer use. It is an installable web app (PWA)
 built with Next.js, TypeScript and Tailwind CSS, with Supabase (accounts and database),
-Resend and Web Push (reminders) and Stripe (payments).
+Resend and Web Push (reminders), Stripe (payments) and Enable Banking (bank connections).
 
 - **To put it online:** follow [DEPLOY.md](DEPLOY.md), which covers every account step by step.
 - **Product brief, roadmap and status:** [CLAUDE.md](CLAUDE.md).
@@ -15,8 +15,12 @@ Resend and Web Push (reminders) and Stripe (payments).
 - Works on the device without an account; sign in with an emailed code to sync across devices
 - Reminders by email and phone notification 3 days before each charge (Pro)
 - Pro at €2.99/month or €24/year through Stripe; the Free plan covers 5 subscriptions
+- A **Cancel it** button on every subscription: opens the service's own cancel page, then
+  "Did you cancel it?" moves it to Cancelled and shows what you're saving per year
 - Step-by-step cancel guides for 22 popular services (Pro)
-- Finds subscriptions in a bank statement export (CSV), read on the device only (Pro)
+- **Connect your bank** (Pro): Drip finds every subscription and adds new ones the day after
+  they're charged. Read-only open banking; the bank login happens on the bank's own site
+- Or find subscriptions in a bank statement export (CSV), read on the device only (Pro)
 - Family sharing: share subscriptions and split the cost (Pro to create a family, free to join)
 - Installs on phones and computers and works offline
 
@@ -104,7 +108,7 @@ ignores. Never put them in the code. [`.env.example`](.env.example) lists every 
 ```
 src/
   app/                   Next.js App Router: page, manifest, icons, error pages
-    api/                 Server routes: account, pro-preview, stripe/*, cron/reminders, push/test
+    api/                 Server routes: account, pro-preview, stripe/*, bank/*, cron/*, push/test
   components/            React components (Dashboard ties them together)
   lib/
     billing.ts           Money and date logic: totals, 30-day projection, roll-forward, formatting
@@ -113,9 +117,10 @@ src/
     store.ts             The browser store: device-only or signed in, offline outbox, actions
     cloud.ts, sync.ts    Mapping to database rows, and sending/receiving changes
     reminders.ts         Which reminders are due and their text; reminder-job.ts sends them
+    bank-sync.ts         Reads connected banks and adds the subscriptions found
     payments.ts          Stripe checkout, portal and webhook handling
     cancel-guides.ts     The cancel guides and name matching
-    bank/                Reading bank statement CSVs and detecting subscriptions
+    bank/                Bank statement CSVs, detecting subscriptions, the Enable Banking client
     family.ts, split.ts  Family sharing and cost splitting
     *.test.ts            Unit tests;  *.db.test.ts  database tests
 supabase/

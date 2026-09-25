@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { CATEGORY_COLORS, FREE_LIMIT } from "./catalog";
 import {
   addSubscription,
+  cancelSubscription,
   clearExamples,
   createSampleState,
   deleteSubscription,
   isAtFreeLimit,
+  restoreSubscription,
   rollState,
   setProPreview,
   toggleUsed,
@@ -176,5 +178,51 @@ describe("other actions", () => {
     expect(later).not.toBe(sample);
     const disney = later.subs.find((s) => s.name === "Disney+");
     expect(disney).toMatchObject({ trial: false, price: 9.99, nextCharge: "2026-10-29" });
+  });
+});
+
+describe("cancelling", () => {
+  it("marks it cancelled today, stops sharing it, and frees a Free slot", () => {
+    const full = ownList(FREE_LIMIT);
+    const target = { ...full.subs[0], shared: true };
+    const state = cancelSubscription({ ...full, subs: [target, ...full.subs.slice(1)] }, target.id, TODAY);
+    expect(state.subs[0]).toMatchObject({ id: target.id, cancelledOn: TODAY });
+    expect(state.subs[0].shared).toBeUndefined();
+    expect(isAtFreeLimit(state)).toBe(false);
+    expect(addSubscription(state, input({ name: "Another" }), makeId()).ok).toBe(true);
+  });
+
+  it("keeps the first cancellation date", () => {
+    const state = ownList(1);
+    const once = cancelSubscription(state, state.subs[0].id, "2026-09-01");
+    expect(cancelSubscription(once, state.subs[0].id, TODAY).subs[0].cancelledOn).toBe("2026-09-01");
+  });
+
+  it("keeps the cancellation through an edit", () => {
+    const state = ownList(1);
+    const cancelled = cancelSubscription(state, state.subs[0].id, TODAY);
+    const edited = updateSubscription(cancelled, state.subs[0].id, input({ name: "Renamed" }));
+    expect(edited.subs[0]).toMatchObject({ name: "Renamed", cancelledOn: TODAY });
+  });
+
+  it("restores with the next charge moved past today", () => {
+    const state = ownList(1);
+    const id = state.subs[0].id;
+    const cancelled = cancelSubscription(
+      { ...state, subs: [{ ...state.subs[0], nextCharge: "2026-08-01", billingDay: 1 }] },
+      id,
+      "2026-07-25",
+    );
+    const result = restoreSubscription(cancelled, id, TODAY);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.subs[0].cancelledOn).toBeUndefined();
+    expect(result.state.subs[0].nextCharge).toBe("2026-10-01");
+  });
+
+  it("won't restore past the Free limit", () => {
+    const full = ownList(FREE_LIMIT + 1, true);
+    const cancelled = { ...cancelSubscription(full, full.subs[0].id, TODAY), proPreview: false };
+    expect(restoreSubscription(cancelled, full.subs[0].id, TODAY)).toEqual({ ok: false, reason: "limit" });
   });
 });

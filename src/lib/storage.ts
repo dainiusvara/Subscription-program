@@ -54,6 +54,7 @@ export function sanitizeSubscription(raw: unknown): Subscription | null {
     used: used !== false,
     trial: isTrial,
     ...(raw.shared === true ? { shared: true } : {}),
+    ...(isSupportedDate(raw.cancelledOn) ? { cancelledOn: raw.cancelledOn } : {}),
   };
 }
 

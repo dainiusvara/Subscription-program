@@ -25,7 +25,10 @@ export function BankImportPanel({
   hasPro,
   onOpenPro,
   onAdd,
+  title = "Find subscriptions automatically",
 }: {
+  /** With live bank connections on, this is the fallback: "Or import a bank statement". */
+  title?: string;
   subs: Subscription[];
   today: ISODate;
   currency: CurrencyCode;
@@ -86,7 +89,7 @@ export function BankImportPanel({
 
   return (
     <Panel
-      title="Find subscriptions automatically"
+      title={title}
       titleId="bank-title"
       subtitle="Download your transactions as a CSV file from your online bank (usually under Statements or Export) and choose it here."
     >

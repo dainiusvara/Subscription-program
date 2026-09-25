@@ -104,6 +104,25 @@ const RULES = {
   merchant: { tolerance: 1.02, minCharges: 3 },
 };
 
+/**
+ * Services that sell nothing but subscriptions: with a live bank connection a
+ * single recent charge is enough to add them (as monthly), so a new Netflix
+ * shows up the day it's paid instead of a month later. Stores that also sell
+ * one-off things (App Store, Amazon, PlayStation…) still need two charges.
+ */
+const SUBSCRIPTION_ONLY = new Set([
+  "netflix", "spotify", "youtube", "disney", "chatgpt", "icloud", "google-one", "microsoft-365", "dropbox", "canva",
+  "audible", "hbo-max", "paramount", "deezer",
+]);
+
+/** How recent a single charge must be to count as a new subscription. */
+const NEW_CHARGE_DAYS = 35;
+
+export interface DetectOptions {
+  /** Count a single recent charge from a subscription-only service (live bank feed). */
+  newServices?: boolean;
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -136,6 +155,7 @@ export function detectSubscriptions(
   transactions: readonly Transaction[],
   today: ISODate,
   existing: readonly Pick<Subscription, "name">[] = [],
+  options: DetectOptions = {},
 ): Candidate[] {
   const outgoing = transactions.filter((t) => t.amount < 0);
   if (outgoing.length === 0) return [];
@@ -160,15 +180,23 @@ export function detectSubscriptions(
 
   for (const [key, group] of groups) {
     const rule = group.service ? RULES.service : RULES.merchant;
-    const clusters = clusterByAmount(group.items, rule.tolerance).filter((c) => c.length >= rule.minCharges);
+    const chargeDays = new Set(group.items.map((t) => t.date));
+    const single =
+      options.newServices === true &&
+      group.service !== null &&
+      SUBSCRIPTION_ONLY.has(group.service.id) &&
+      chargeDays.size === 1 &&
+      daysBetween(group.items[0].date, today) <= NEW_CHARGE_DAYS;
+    const minCharges = single ? 1 : rule.minCharges;
+    const clusters = clusterByAmount(group.items, rule.tolerance).filter((c) => c.length >= minCharges);
     for (const [index, cluster] of clusters.entries()) {
       // One charge per day at most (refunds and retries aside).
       const byDate = new Map<ISODate, Transaction>();
       for (const t of cluster) byDate.set(t.date, t);
       const charges = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-      if (charges.length < rule.minCharges) continue;
+      if (charges.length < minCharges) continue;
       const dates = charges.map((t) => t.date);
-      const cycle = classify(dates);
+      const cycle = single ? "month" : classify(dates);
       if (!cycle) continue;
 
       const last = charges.at(-1)!;

@@ -144,7 +144,8 @@ const MAX_ROLL_STEPS = 5000;
  * A free trial whose end date has passed becomes a paid plan at its after-trial price.
  */
 export function rollForward(sub: Subscription, today: ISODate): Subscription {
-  if (sub.nextCharge >= today) return sub;
+  // A cancelled plan doesn't charge again; its date stays as the day it ended.
+  if (sub.nextCharge >= today || sub.cancelledOn) return sub;
 
   let next = sub.nextCharge;
   for (let step = 0; next < today && step < MAX_ROLL_STEPS; step++) {
@@ -191,15 +192,29 @@ export function chargeAmount(sub: Subscription): number {
   return sub.trial ? (sub.priceAfterTrial ?? 0) : sub.price;
 }
 
+/** Still being paid for: not cancelled. Totals, charges and reminders only count these. */
+export function isActive(sub: Subscription): boolean {
+  return !sub.cancelledOn;
+}
+
 /** What the user pays per month right now. Free trials count as 0 until they end. */
 export function monthlyTotal(subs: readonly Subscription[]): number {
-  return subs.reduce((sum, sub) => (sub.trial ? sum : sum + monthlyEquivalent(sub.price, sub.cycle)), 0);
+  return subs.reduce((sum, sub) => (sub.trial || !isActive(sub) ? sum : sum + monthlyEquivalent(sub.price, sub.cycle)), 0);
 }
 
 /** Yearly cost of everything marked as not used, trials at their after-trial price. */
 export function yearlySavings(subs: readonly Subscription[]): number {
   const monthly = subs.reduce(
-    (sum, sub) => (sub.used ? sum : sum + monthlyEquivalent(chargeAmount(sub), sub.cycle)),
+    (sum, sub) => (sub.used || !isActive(sub) ? sum : sum + monthlyEquivalent(chargeAmount(sub), sub.cycle)),
+    0,
+  );
+  return monthly * 12;
+}
+
+/** What the cancelled subscriptions would have cost per year (trials at their after-trial price). */
+export function cancelledSavings(subs: readonly Subscription[]): number {
+  const monthly = subs.reduce(
+    (sum, sub) => (isActive(sub) ? sum : sum + monthlyEquivalent(chargeAmount(sub), sub.cycle)),
     0,
   );
   return monthly * 12;
@@ -232,6 +247,7 @@ export function upcomingCharges(
 ): Charge[] {
   const charges: Charge[] = [];
   for (const sub of subs) {
+    if (!isActive(sub)) continue;
     let date = sub.nextCharge;
     let day = daysBetween(today, date);
     // A week is the shortest cycle, so there are never more charges than days.
@@ -281,6 +297,9 @@ export interface Summary {
   next30: number;
   /** "You could save / yr": what the unused subscriptions cost per year. */
   savings: number;
+  /** What the subscriptions the user cancelled would have cost per year. */
+  saved: number;
+  cancelledCount: number;
   charges: Charge[];
 }
 
@@ -290,9 +309,11 @@ export function summarize(subs: readonly Subscription[], today: ISODate): Summar
   return {
     monthly,
     yearly: monthly * 12,
-    count: subs.length,
+    count: subs.filter(isActive).length,
     next30: charges.reduce((sum, charge) => sum + charge.amount, 0),
     savings: yearlySavings(subs),
+    saved: cancelledSavings(subs),
+    cancelledCount: subs.filter((sub) => !isActive(sub)).length,
     charges,
   };
 }

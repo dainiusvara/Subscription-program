@@ -17,7 +17,8 @@ inside the project folder (`cd Subscription-program`).
 | 3 | Resend | Sends reminder and sign-in emails | Free up to 3,000 emails/month |
 | 4 | Vercel | Hosts the website and runs the daily reminders | Hobby is free but for non-commercial use; Pro $20/month once you charge money |
 | 5 | Stripe | Takes payments for Pro | No monthly fee; a small cut of each payment |
-| 6 | Google Play / Apple | Optional store apps | $25 once / $99 per year |
+| 6 | Enable Banking | "Connect your bank": finds subscriptions automatically | Free to test; a monthly contract once real customers connect |
+| 7 | Google Play / Apple | Optional store apps | $25 once / $99 per year |
 
 Check each service's pricing page before you rely on these numbers.
 
@@ -132,7 +133,72 @@ Start in **test mode**: nothing is charged and you can try every step.
 VAT: selling to consumers in the EU usually means charging VAT. Stripe Tax can calculate it; ask
 an accountant what applies to you.
 
-## 6. Store apps (optional)
+## 6. Enable Banking: "Connect your bank"
+
+This lets customers connect their bank so Drip finds their subscriptions by itself, and adds new
+ones the day after they're charged. It uses open banking (PSD2), which is legal across the EU:
+the customer logs in at their bank's own website and gives Drip read-only access for 180 days.
+Drip never sees their password or card number, and it doesn't keep their transactions.
+
+Why Enable Banking: it covers 2,500+ banks in 29 countries (Swedbank, SEB, Luminor, Citadele,
+Revolut and Šiaulių bankas in Lithuania), has a free test mode, and doesn't require you to hold a
+banking licence yourself. (GoCardless, the other common choice, stopped taking new customers in
+July 2025.)
+
+**Test it first (free):**
+
+1. Go to <https://enablebanking.com/sign-in/>, enter your email and click the link it sends you.
+   Your account is created on the first sign-in.
+2. In the Control Panel, open **API applications** → register a new application:
+   - Environment: **Sandbox**
+   - Name: `Drip (test)`
+   - Allowed redirect URLs: `https://your-domain/api/bank/callback`, plus
+     `http://localhost:3000/api/bank/callback` to try it on your PC
+   - Fill in the other fields (description, privacy and terms links: your site is fine for now)
+3. When you submit, your browser downloads a file like `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.pem`.
+   **This file is the key: keep it safe and never send it to anyone.** Its name (without `.pem`)
+   is the application ID.
+4. In Vercel add these, then **Redeploy**:
+
+   | Name | Value |
+   | ---- | ----- |
+   | `ENABLE_BANKING_APP_ID` | the file name without `.pem` |
+   | `ENABLE_BANKING_PRIVATE_KEY` | open the `.pem` file in Notepad and paste all of it, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines |
+   | `NEXT_PUBLIC_BANK_ENABLED` | `true` |
+
+   On your PC, `.env.local` takes the key in double quotes over several lines:
+   ```
+   ENABLE_BANKING_APP_ID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+   ENABLE_BANKING_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+   (all the lines from the file)
+   -----END PRIVATE KEY-----"
+   NEXT_PUBLIC_BANK_ENABLED=true
+   ```
+5. Try it: sign in to Drip (with Pro or the Pro preview), tap **Connect my bank**, pick a country
+   and a test bank. The test banks and their logins are listed at
+   <https://enablebanking.com/docs/api/sandbox/>. **Mock ASPSP** works in every country without a
+   login. You come back to Drip with what it found.
+6. Drip checks every connected bank once a day at 06:00 UTC, before the reminders (see
+   `vercel.json`). The customer can also tap **Check now** (every 6 hours at most, because banks
+   limit how often an app may read without the customer logging in).
+
+**Try it with your own bank account (free):** register a second application with environment
+**Production**. Until it's activated it runs in *restricted* mode: only accounts you link in the
+Control Panel work, so you can connect your own bank and see Drip find your real subscriptions.
+Use that application's ID and key in Vercel instead of the sandbox ones.
+
+**Going live for customers:** in the Control Panel, ask to activate the production application.
+Enable Banking checks your business (KYB) and you sign a contract with them. They need your
+company details, your privacy policy and terms links, and a data protection contact email.
+Pricing depends on how many bank accounts are connected per month, with a monthly minimum:
+ask them for a quote before you promise the feature to customers.
+
+**Privacy:** your privacy policy must say that customers who connect a bank share their account
+list and transactions with Enable Banking and Drip, that Drip reads them only to find
+subscriptions and doesn't store them, and how to disconnect (the **Disconnect** button ends the
+consent at the bank too).
+
+## 7. Store apps (optional)
 
 Drip already installs from the browser on phones and computers, with notifications (on iPhone
 since iOS 16.4, once added to the Home Screen). Store apps add visibility, but they come with rules:
@@ -162,7 +228,7 @@ cloud Mac service). PWABuilder's **iOS** package is an Xcode project to build an
 ## Before real users arrive
 
 - Publish a **privacy policy** and **terms** (the app stores and GDPR require them). They should
-  mention Supabase, Resend, Stripe and Vercel as the services that process data.
+  mention Supabase, Resend, Stripe, Vercel and Enable Banking as the services that process data.
 - Upgrade Supabase to Pro so the project never pauses, and turn on its daily backups.
 - In Stripe, turn on email receipts and set your business name and support email.
 

@@ -16,6 +16,14 @@ export function Summary({ summary, currency }: { summary: SummaryData | null; cu
           Every subscription you pay for, in one place. Drip warns you before each charge and points out the ones
           you&apos;ve stopped using.
         </p>
+        {summary && summary.saved > 0 && (
+          <p className="mt-2.5 inline-flex flex-wrap items-baseline gap-x-1.5 rounded-full bg-good-soft px-3 py-1 text-sm text-good">
+            <span className="font-semibold">Saving {money(summary.saved)} a year</span>
+            <span>
+              by cancelling {summary.cancelledCount} {summary.cancelledCount === 1 ? "subscription" : "subscriptions"}
+            </span>
+          </p>
+        )}
       </div>
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[14px] border border-line bg-line">
         <Stat label="Per year" value={money(summary?.yearly ?? 0)} />

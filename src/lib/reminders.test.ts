@@ -41,6 +41,11 @@ describe("dueReminders", () => {
     ]);
   });
 
+  it("never reminds about a cancelled subscription", () => {
+    const subs = [sub({ id: "a", nextCharge: "2026-09-26", cancelledOn: "2026-09-20" })];
+    expect(dueReminders(subs, TODAY, new Set())).toEqual([]);
+  });
+
   it("skips what was already sent", () => {
     const subs = [sub({ id: "a", nextCharge: "2026-09-26" })];
     expect(dueReminders(subs, TODAY, new Set([reminderKey("a", "2026-09-26")]))).toEqual([]);

@@ -109,3 +109,44 @@ export async function pullAccount(supabase: DripSupabase, userId: string): Promi
     },
   };
 }
+
+/** A connected bank as the app sees it (the provider session stays on the server). */
+export interface BankConnectionInfo {
+  id: string;
+  bankName: string;
+  bankCountry: string;
+  status: "pending" | "active" | "expired";
+  validUntil: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+}
+
+export interface BankData {
+  connections: BankConnectionInfo[];
+  /** Subscriptions the bank sync added. */
+  fromBank: string[];
+}
+
+export async function pullBank(supabase: DripSupabase): Promise<BankData | null> {
+  const [connections, detections] = await Promise.all([
+    supabase
+      .from("bank_connections")
+      .select("id, bank_name, bank_country, status, valid_until, last_synced_at, last_error, created_at")
+      .neq("status", "pending")
+      .order("created_at"),
+    supabase.from("bank_detections").select("subscription_id").eq("outcome", "added").not("subscription_id", "is", null),
+  ]);
+  if (connections.error || detections.error || !connections.data || !detections.data) return null;
+  return {
+    connections: connections.data.map((c) => ({
+      id: c.id,
+      bankName: c.bank_name,
+      bankCountry: c.bank_country,
+      status: c.status === "active" || c.status === "expired" ? c.status : "pending",
+      validUntil: c.valid_until,
+      lastSyncedAt: c.last_synced_at,
+      lastError: c.last_error,
+    })),
+    fromBank: detections.data.flatMap((d) => (d.subscription_id ? [d.subscription_id] : [])),
+  };
+}

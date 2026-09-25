@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { GUIDES_CHECKED, searchGuides, type CancelGuide } from "@/lib/cancel-guides";
+import { GUIDES_CHECKED, cancellationEmail, searchGuides, type CancelGuide } from "@/lib/cancel-guides";
 import type { Subscription } from "@/lib/types";
 import { Modal } from "./Modal";
 import { Button, buttonClass, cx } from "./ui";
@@ -18,17 +18,21 @@ export function CancelGuidesDialog({
   hasPro,
   onClose,
   onOpenPro,
-  onRemove,
+  onCancelled,
 }: {
   view: GuideView | null;
   hasPro: boolean;
   onClose: () => void;
   onOpenPro: () => void;
-  onRemove: (sub: Subscription) => void;
+  /** The user says they cancelled it with the service. */
+  onCancelled: (sub: Subscription) => void;
 }) {
   const id = useId();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<CancelGuide | null>(null);
+  /** They went to the service's page: now ask whether it worked. */
+  const [visited, setVisited] = useState(false);
+  const [copied, setCopied] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const guide = view?.guide ?? picked;
   const sub = view?.sub ?? null;
@@ -36,7 +40,20 @@ export function CancelGuidesDialog({
   function close() {
     setPicked(null);
     setQuery("");
+    setVisited(false);
+    setCopied(false);
     onClose();
+  }
+
+  async function copyEmail(name: string) {
+    const email = cancellationEmail(name);
+    try {
+      await navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`);
+      setCopied(true);
+      setVisited(true);
+    } catch {
+      setCopied(false);
+    }
   }
 
   return (
@@ -80,9 +97,37 @@ export function CancelGuidesDialog({
           </h3>
           {sub && sub.name !== guide.name && <p className="m-0 -mt-1 text-sm text-muted">Guide: {guide.name}</p>}
 
+          {guide.cancelUrl || guide.url ? (
+            <a
+              href={guide.cancelUrl ?? guide.url ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setVisited(true)}
+              className={cx(buttonClass("primary"), "justify-self-start")}
+            >
+              {guide.cancelUrl ? `Open ${serviceName(guide)}'s cancel page ↗` : `Open ${serviceName(guide)}'s help page ↗`}
+            </a>
+          ) : (
+            <div className="grid gap-2">
+              <p className="m-0 text-sm">
+                Most gyms and smaller services want a written cancellation. Copy this email, fill in your details and
+                send it to them.
+              </p>
+              <Button className="justify-self-start" onClick={() => void copyEmail(sub?.name ?? "")}>
+                {copied ? "Copied. Paste it into an email" : "Copy a cancellation email"}
+              </Button>
+            </div>
+          )}
+          {guide.cancelUrl && (
+            <p className="m-0 -mt-1 text-xs text-muted">
+              Sign in there if it asks. Drip can&apos;t press the final button for you: only you can, in your account.
+            </p>
+          )}
+
           {hasPro ? (
-            <>
-              <ol className="m-0 grid list-decimal gap-1.5 pl-[18px]">
+            <details className="group rounded-xl border border-line px-3 py-2" open={!guide.cancelUrl}>
+              <summary className="cursor-pointer text-sm font-semibold">Step by step</summary>
+              <ol className="mt-2 mb-1 grid list-decimal gap-1.5 pl-[18px]">
                 {guide.steps.map((step) => (
                   <li key={step}>{step}</li>
                 ))}
@@ -94,53 +139,66 @@ export function CancelGuidesDialog({
                   ))}
                 </ul>
               )}
-            </>
+            </details>
           ) : (
             <div className="grid gap-2 rounded-xl bg-accent-soft p-3 text-sm">
               <p className="m-0">Step-by-step cancel guides are part of Drip Pro.</p>
-              <Button size="sm" className="justify-self-start" onClick={onOpenPro}>
+              <Button size="sm" variant="ghost" className="justify-self-start" onClick={onOpenPro}>
                 See Pro
               </Button>
             </div>
           )}
 
-          {guide.url && (
-            <a
-              href={guide.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cx(buttonClass("ghost", "sm"), "justify-self-start")}
-            >
-              Open the official help page ↗
+          {guide.cancelUrl && guide.url && (
+            <a href={guide.url} target="_blank" rel="noopener noreferrer" className="justify-self-start text-sm text-muted underline hover:text-ink">
+              Official help page ↗
             </a>
           )}
           <p className="m-0 text-xs text-muted">
             Checked {GUIDES_CHECKED}. Menus change: if a step doesn&apos;t match, the official page has the latest.
           </p>
 
-          <div className="flex flex-wrap gap-2">
-            <Button ref={closeRef} onClick={close}>
-              Done
-            </Button>
-            {sub && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  onRemove(sub);
-                  close();
-                }}
-              >
-                Cancelled it? Remove from Drip
+          {sub ? (
+            <div
+              className={cx(
+                "grid gap-2 rounded-xl p-3 transition-colors",
+                visited ? "bg-good-soft" : "bg-surface-2",
+              )}
+            >
+              <p className="m-0 font-semibold">Did you cancel {sub.name}?</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => {
+                    onCancelled(sub);
+                    close();
+                  }}
+                >
+                  Yes, I cancelled it
+                </Button>
+                <Button ref={closeRef} variant="ghost" onClick={close}>
+                  Not yet
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button ref={closeRef} onClick={close}>
+                Done
               </Button>
-            )}
-            {!view?.guide && (
-              <Button variant="ghost" onClick={() => setPicked(null)}>
-                All guides
-              </Button>
-            )}
-          </div>
+              {!view?.guide && (
+                <Button variant="ghost" onClick={() => setPicked(null)}>
+                  All guides
+                </Button>
+              )}
+            </div>
+          )}
         </>
       )}
     </Modal>
   );
+}
+
+/** "Spotify Premium" → "Spotify"; long names like "Apple subscriptions (…)" → "Apple". */
+function serviceName(guide: CancelGuide): string {
+  return guide.name.replace(/ \(.*\)$/, "").replace(/ (Premium|Plus|subscriptions)$/, "");
 }

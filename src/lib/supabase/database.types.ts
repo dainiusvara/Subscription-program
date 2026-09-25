@@ -49,6 +49,86 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_connections: {
+        Row: {
+          account_ids: string[]
+          auth_state: string | null
+          bank_country: string
+          bank_name: string
+          created_at: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          account_ids?: string[]
+          auth_state?: string | null
+          bank_country: string
+          bank_name: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          account_ids?: string[]
+          auth_state?: string | null
+          bank_country?: string
+          bank_name?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      bank_detections: {
+        Row: {
+          created_at: string
+          merchant_key: string
+          outcome: string
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          merchant_key: string
+          outcome: string
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          merchant_key?: string
+          outcome?: string
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_detections_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           email: string
@@ -212,6 +292,7 @@ export type Database = {
       subscriptions: {
         Row: {
           billing_day: number
+          cancelled_on: string | null
           category: string
           color: string
           created_at: string
@@ -229,6 +310,7 @@ export type Database = {
         }
         Insert: {
           billing_day: number
+          cancelled_on?: string | null
           category: string
           color: string
           created_at?: string
@@ -246,6 +328,7 @@ export type Database = {
         }
         Update: {
           billing_day?: number
+          cancelled_on?: string | null
           category?: string
           color?: string
           created_at?: string

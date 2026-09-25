@@ -38,6 +38,8 @@ export interface Subscription {
   trial: boolean;
   /** Shared with the user's family, which splits the cost. */
   shared?: boolean;
+  /** The day the user said they cancelled it. It stays listed (and counts as saved) but no longer charges. */
+  cancelledOn?: ISODate;
 }
 
 export interface DripState {

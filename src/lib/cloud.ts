@@ -23,10 +23,12 @@ export interface SubscriptionRow {
   trial: boolean;
   /** Set when shared with the family. */
   household_id?: string | null;
+  /** Set when the user cancelled it. */
+  cancelled_on?: string | null;
 }
 
 export const SUBSCRIPTION_COLUMNS =
-  "id, user_id, name, price, price_after_trial, cycle, next_charge, billing_day, category, color, used, trial, household_id";
+  "id, user_id, name, price, price_after_trial, cycle, next_charge, billing_day, category, color, used, trial, household_id, cancelled_on";
 
 /** `householdId` is the user's family, used when the subscription is shared. */
 export function toRow(sub: Subscription, userId: string, householdId: string | null = null): SubscriptionRow {
@@ -44,6 +46,7 @@ export function toRow(sub: Subscription, userId: string, householdId: string | n
     used: sub.used,
     trial: sub.trial,
     household_id: sub.shared && householdId ? householdId : null,
+    cancelled_on: sub.cancelledOn ?? null,
   };
 }
 
@@ -62,6 +65,7 @@ export function fromRow(row: SubscriptionRow): Subscription | null {
     used: row.used,
     trial: row.trial,
     shared: Boolean(row.household_id),
+    cancelledOn: row.cancelled_on ?? undefined,
   });
 }
 
@@ -119,7 +123,8 @@ function sameSubscription(a: Subscription, b: Subscription): boolean {
     a.color === b.color &&
     a.used === b.used &&
     a.trial === b.trial &&
-    Boolean(a.shared) === Boolean(b.shared)
+    Boolean(a.shared) === Boolean(b.shared) &&
+    (a.cancelledOn ?? null) === (b.cancelledOn ?? null)
   );
 }
 

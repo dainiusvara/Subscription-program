@@ -3,7 +3,7 @@
  * current state and returns a new one, so they're easy to test and to reuse
  * when the data moves to the cloud database.
  */
-import { addDays, dayOfMonth, rollAllForward } from "./billing";
+import { addDays, dayOfMonth, isActive, rollAllForward, rollForward } from "./billing";
 import { CATEGORY_COLORS, FREE_LIMIT } from "./catalog";
 import type { CurrencyCode, DripState, ISODate, Subscription, SubscriptionInput } from "./types";
 
@@ -38,8 +38,9 @@ export function hasPro(state: DripState): boolean {
   return state.pro || state.proPreview;
 }
 
+/** The Free plan covers 5 subscriptions; cancelled ones don't count. */
 export function isAtFreeLimit(state: DripState): boolean {
-  return !hasPro(state) && state.subs.length >= FREE_LIMIT;
+  return !hasPro(state) && state.subs.filter(isActive).length >= FREE_LIMIT;
 }
 
 /** Applies the form input to a new or existing subscription. */
@@ -82,7 +83,46 @@ export function addSubscription(state: DripState, input: SubscriptionInput, id: 
 export function updateSubscription(state: DripState, id: string, input: SubscriptionInput): DripState {
   return {
     ...state,
-    subs: state.subs.map((sub) => (sub.id === id ? { id, used: sub.used, ...applyInput(input, sub) } : sub)),
+    subs: state.subs.map((sub) =>
+      sub.id === id
+        ? { id, used: sub.used, ...applyInput(input, sub), ...(sub.cancelledOn ? { cancelledOn: sub.cancelledOn } : {}) }
+        : sub,
+    ),
+  };
+}
+
+/**
+ * The user cancelled it with the service. It stops counting towards totals and
+ * reminders, and what it cost counts as saved. It also stops being shared.
+ */
+export function cancelSubscription(state: DripState, id: string, today: ISODate): DripState {
+  return {
+    ...state,
+    subs: state.subs.map((sub) => {
+      if (sub.id !== id || sub.cancelledOn) return sub;
+      const cancelled: Subscription = { ...sub, cancelledOn: today };
+      delete cancelled.shared;
+      return cancelled;
+    }),
+  };
+}
+
+export type RestoreResult = { ok: true; state: DripState } | { ok: false; reason: "limit" };
+
+/** "I didn't cancel it after all": back to paying, with the next charge date moved past today. */
+export function restoreSubscription(state: DripState, id: string, today: ISODate): RestoreResult {
+  if (isAtFreeLimit(state)) return { ok: false, reason: "limit" };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      subs: state.subs.map((sub) => {
+        if (sub.id !== id || !sub.cancelledOn) return sub;
+        const restored: Subscription = { ...sub };
+        delete restored.cancelledOn;
+        return rollForward(restored, today);
+      }),
+    },
   };
 }
 

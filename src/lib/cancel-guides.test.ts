@@ -3,6 +3,7 @@ import {
   CANCEL_GUIDES,
   GENERAL_GUIDE,
   SERVICE_GUIDE_COUNT,
+  cancellationEmail,
   findGuideByName,
   guideFor,
   normalizeName,
@@ -82,5 +83,22 @@ describe("guide data", () => {
     expect(searchGuides("photo").map((g) => g.id)).toEqual(["adobe"]);
     expect(searchGuides("").length).toBe(CANCEL_GUIDES.length + 1);
     expect(searchGuides("zzz")).toEqual([]);
+  });
+});
+
+describe("cancelling directly", () => {
+  it("links straight to the cancel page only on the services' own sites", () => {
+    for (const guide of CANCEL_GUIDES) {
+      if (!guide.cancelUrl) continue;
+      expect(new URL(guide.cancelUrl).protocol).toBe("https:");
+    }
+    expect(CANCEL_GUIDES.find((g) => g.id === "netflix")?.cancelUrl).toBe("https://www.netflix.com/cancelplan");
+  });
+
+  it("writes a cancellation email for services without a cancel button", () => {
+    const email = cancellationEmail("FitZone Vilnius");
+    expect(email.subject).toBe("Cancellation of my FitZone Vilnius membership");
+    expect(email.body).toContain("stop all further payments");
+    expect(cancellationEmail(" ").subject).toBe("Cancellation of my membership");
   });
 });

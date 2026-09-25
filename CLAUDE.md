@@ -17,11 +17,14 @@ Why people pay: it saves more money than it costs. One forgotten charge caught =
 3. **Done.** Reminders by email (Resend) and web push, 3 days before each charge and before trials end (daily Vercel Cron job)
 4. **Done.** Payments: Stripe Checkout + Customer Portal; the webhook sets `is_pro`
 5. **Done.** Cancel guides for 22 services + gym/general advice, linked to official help pages (checked Sept 2026)
-6. **Done (CSV version).** Subscriptions are detected from a bank statement CSV export, read in the browser only. Live bank connections (GoCardless / Plaid) still need the owner's business to be approved by a provider
+6. **Done.** Live bank connections through Enable Banking (open banking, read-only, 180-day consent): the app asks "Connect your bank?" after sign-in, adds every subscription it finds and new ones the day after their first charge (daily cron + "Check now"). Tested against a fake Enable Banking API; real customers need Enable Banking's production contract (DEPLOY.md §6). The CSV statement import stays as the fallback
 7. **Done.** Family sharing: households with invite codes, shared subscriptions, equal split with per-person balances
-8. **Prepared, not published.** PWABuilder route instead of Capacitor: manifest screenshots and shortcuts, and `/.well-known/assetlinks.json` from env. Publishing needs store accounts, plus a decision on in-app billing rules (see DEPLOY.md §6)
+8. **Prepared, not published.** PWABuilder route instead of Capacitor: manifest screenshots and shortcuts, and `/.well-known/assetlinks.json` from env. Publishing needs store accounts, plus a decision on in-app billing rules (see DEPLOY.md §7)
+9. **Done.** "Cancel it" button on every subscription: opens the service's own cancel page (Netflix, Spotify, YouTube, Google Play, Microsoft 365) or help page, or copies a cancellation email (gyms). "Did you cancel it?" moves it to a Cancelled section and counts "Saving €X a year"
 
-**Not live yet:** everything runs and is tested locally, but the owner still has to create the Supabase, Resend, Vercel and Stripe accounts and follow DEPLOY.md. No keys exist in the repo.
+**Not live yet:** everything runs and is tested locally, but the owner still has to create the Supabase, Resend, Vercel, Stripe and Enable Banking accounts and follow DEPLOY.md. No keys exist in the repo.
+
+Cancelling for the user inside Drip isn't possible: services have no cancellation API, and logging in as the user would mean storing their passwords. Drip opens the right page and the user presses the final button.
 
 ## Rules
 - Keep the look: teal accent, Bricolage Grotesque (display), Figtree (body), JetBrains Mono (numbers), light + dark themes
@@ -41,22 +44,25 @@ Why people pay: it saves more money than it costs. One forgotten charge caught =
 - `src/lib/cloud.ts` (row mapping, diff, outbox; pure), `src/lib/sync.ts` (push/pull with supabase-js)
 - `src/lib/reminders.ts` (due reminders + message text; pure), `src/lib/reminder-job.ts` (daily job with injectable senders), `src/lib/senders.ts` (Resend, web-push)
 - `src/lib/payments.ts`: Stripe; `handleStripeEvent` applies subscription events newest-first (`stripe_event_at`)
-- `src/lib/cancel-guides.ts`: guide data and name matching. `src/lib/bank/`: CSV parsing (`statement.ts`) and detection (`detect.ts`)
+- `src/lib/cancel-guides.ts`: guide data, name matching, direct `cancelUrl`s (only where the service's own help page links to it) and the cancellation email
+- `src/lib/bank/`: CSV parsing (`statement.ts`), detection (`detect.ts`; `newServices` lets one recent charge of a subscription-only service count), Enable Banking client (`enable-banking.ts`, RS256-signed requests, server only), feed mapping and sync plan (`live.ts`, pure), `server.ts` (config, state cookie)
+- `src/lib/bank-sync.ts`: syncs a connection (claims each merchant in `bank_detections` first, so nothing is added twice or re-added after the user deletes it) and the daily run with notifications
+- Cancelled subscriptions keep `cancelledOn` (`cancelled_on` column): `billing.ts` leaves them out of totals, charges and reminders and counts them in `saved`; they don't count towards the Free limit (also in SQL) and can't stay shared
 - `src/lib/family.ts` (RPC calls) and `src/lib/split.ts` (equal split, balances; pure)
-- API routes in `src/app/api/`: `account` (delete), `pro-preview`, `stripe/{checkout,portal,webhook}`, `cron/reminders` (Bearer `CRON_SECRET`), `push/test`, `assetlinks`. Routes authenticate with `Authorization: Bearer <supabase access token>`
-- `supabase/migrations/`: 4 migrations (accounts, reminders, payments, family). Plan fields are server-only; the Free limit, pro preview and family rules live in SQL
+- API routes in `src/app/api/`: `account` (delete), `pro-preview`, `stripe/{checkout,portal,webhook}`, `bank/{banks,connect,callback,sync,disconnect}`, `cron/{bank,reminders}` (Bearer `CRON_SECRET`), `push/test`, `assetlinks`. Routes authenticate with `Authorization: Bearer <supabase access token>`; `bank/callback` is a browser redirect and checks the `state` against an HttpOnly cookie set by `bank/connect`
+- `supabase/migrations/`: 6 migrations (accounts, reminders, payments, family, cancellations, bank). Plan fields are server-only; the Free limit, pro preview and family rules live in SQL. `bank_connections` is readable by its owner through column grants only (never `session_id` or `auth_state`); nobody but the server writes the bank tables
 - `src/components/Dashboard.tsx` owns UI state; `Modal.tsx` wraps `<dialog>` and only reports user-initiated closes
-- Feature switches (`src/lib/config.ts`): no Supabase env means device-only mode; `NEXT_PUBLIC_PAYMENTS_ENABLED=true` swaps the Pro preview for Stripe. The first Stripe webhook event also sets `app_config.payments_live`, which ends the preview in the database
+- Feature switches (`src/lib/config.ts`): no Supabase env means device-only mode; `NEXT_PUBLIC_PAYMENTS_ENABLED=true` swaps the Pro preview for Stripe. The first Stripe webhook event also sets `app_config.payments_live`, which ends the preview in the database. `NEXT_PUBLIC_BANK_ENABLED=true` (plus `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` on the server) shows "Connect your bank"
 
 ## Testing
 - `npm run check`: lint, typecheck, unit tests (Vitest). `npm run test:db`: RLS/limits/sync/reminders/payments/family against a local Supabase (`npx supabase start`, Docker). CI runs both
-- End-to-end runs are done with Playwright against `npm start` + local Supabase + stripe-mock + a fake Resend. They're not in the repo yet; adding them to CI is a good next task
+- End-to-end runs are done with Playwright against `npm start` + local Supabase + stripe-mock + a fake Resend + a fake Enable Banking API (checks the RS256 tokens, serves a test login page and a transaction feed). They're not in the repo yet; adding them to CI is a good next task
 - Local Supabase keys come from `npx supabase status -o env`; `.env.local` points the app at it
 
 ## Next steps
-1. Owner: follow DEPLOY.md (Supabase, Resend + domain, Vercel, Stripe test mode, then live)
-2. Privacy policy and terms pages (GDPR, app stores); cookie-free analytics if wanted
-3. Commit the Playwright end-to-end suites and run them in CI
-4. Live bank connections via GoCardless Bank Account Data or Plaid, once the business is approved (keep CSV import as the fallback)
+1. Owner: follow DEPLOY.md (Supabase, Resend + domain, Vercel, Stripe test mode, Enable Banking sandbox, then live)
+2. Privacy policy and terms pages (GDPR, app stores, and Enable Banking's production review needs them); cookie-free analytics if wanted
+3. Commit the Playwright end-to-end suites (and the fake Enable Banking server) and run them in CI
+4. Bank: warn when a cancelled subscription charges again; update prices when the bank shows a new amount; remind before the 180-day consent ends
 5. Store apps via PWABuilder; decide how Pro is sold inside store apps (Play Billing / Apple IAP rules)
-6. Nice to have: custom split shares per family member, reminder timing setting (1/3/7 days), more cancel guides (re-check links yearly)
+6. Nice to have: custom split shares per family member, reminder timing setting (1/3/7 days), more cancel guides and direct cancel pages (re-check links yearly)
