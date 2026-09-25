@@ -136,8 +136,12 @@ Start in **test mode**: nothing is charged and you can try every step.
    `npm run stripe:setup` again with it, then put the live `STRIPE_SECRET_KEY` and the new
    `STRIPE_WEBHOOK_SECRET` in Vercel and redeploy.
 
-VAT: selling to consumers in the EU usually means charging VAT. Stripe Tax can calculate it; ask
-an accountant what applies to you.
+VAT: selling to consumers in the EU usually means charging VAT. The simplest option is **Managed
+Payments**: Stripe becomes the merchant of record and charges, files and pays VAT in every country
+for an extra fee per payment (3.5% at the time of writing). Accept its terms under Stripe dashboard
+→ **Settings → Managed Payments**, then add `STRIPE_MANAGED_PAYMENTS` = `true` in Vercel.
+`npm run stripe:setup` already gives the product the right tax code and makes prices include VAT.
+Otherwise you handle VAT yourself (Stripe Tax can calculate it); ask an accountant what applies.
 
 ## 6. Enable Banking: "Connect your bank"
 

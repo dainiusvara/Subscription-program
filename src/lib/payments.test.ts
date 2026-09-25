@@ -1,6 +1,42 @@
 import type Stripe from "stripe";
-import { describe, expect, it } from "vitest";
-import { isProStatus, periodEnd, planFromSubscription } from "./payments";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { checkoutSessionParams, isProStatus, managedPaymentsEnabled, periodEnd, planFromSubscription } from "./payments";
+
+describe("Checkout for Pro", () => {
+  const input = { customer: "cus_123", userId: "user-1", price: "price_monthly", site: "https://www.dripsubs.com" };
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("starts a subscription tied to the user, and returns to the app", () => {
+    const params = checkoutSessionParams({ ...input, managed: false });
+    expect(params).toMatchObject({
+      mode: "subscription",
+      customer: "cus_123",
+      client_reference_id: "user-1",
+      line_items: [{ price: "price_monthly", quantity: 1 }],
+      subscription_data: { metadata: { user_id: "user-1" } },
+      success_url: "https://www.dripsubs.com/?checkout=success",
+      cancel_url: "https://www.dripsubs.com/?checkout=cancelled",
+    });
+    expect(params).not.toHaveProperty("managed_payments");
+  });
+
+  it("makes Stripe the merchant of record only when Managed Payments is on", () => {
+    expect(checkoutSessionParams({ ...input, managed: true }).managed_payments).toEqual({ enabled: true });
+    // Stripe controls tax itself then, so these must never be sent alongside it.
+    const params = checkoutSessionParams({ ...input, managed: true });
+    expect(params).not.toHaveProperty("automatic_tax");
+    expect(params).not.toHaveProperty("payment_method_types");
+    expect(params).not.toHaveProperty("customer_update");
+  });
+
+  it("reads Managed Payments from STRIPE_MANAGED_PAYMENTS", () => {
+    vi.stubEnv("STRIPE_MANAGED_PAYMENTS", "true");
+    expect(managedPaymentsEnabled()).toBe(true);
+    vi.stubEnv("STRIPE_MANAGED_PAYMENTS", "");
+    expect(managedPaymentsEnabled()).toBe(false);
+  });
+});
 
 function subscription(overrides: Record<string, unknown> = {}): Stripe.Subscription {
   return {

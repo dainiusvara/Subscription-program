@@ -1,4 +1,11 @@
-import { getStripe, priceFor, stripeConfigured, type Plan } from "@/lib/payments";
+import {
+  checkoutSessionParams,
+  getStripe,
+  managedPaymentsEnabled,
+  priceFor,
+  stripeConfigured,
+  type Plan,
+} from "@/lib/payments";
 import { siteUrl } from "@/lib/senders";
 import { getAdmin, getUserFromRequest, json } from "@/lib/supabase/server";
 
@@ -23,16 +30,14 @@ export async function POST(request: Request) {
     await admin.from("profiles").update({ stripe_customer_id: customer }).eq("id", user.id);
   }
 
-  const site = siteUrl(request);
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer,
-    client_reference_id: user.id,
-    line_items: [{ price: await priceFor(plan), quantity: 1 }],
-    subscription_data: { metadata: { user_id: user.id } },
-    allow_promotion_codes: true,
-    success_url: `${site}/?checkout=success`,
-    cancel_url: `${site}/?checkout=cancelled`,
-  });
+  const session = await stripe.checkout.sessions.create(
+    checkoutSessionParams({
+      customer,
+      userId: user.id,
+      price: await priceFor(plan),
+      site: siteUrl(request),
+      managed: managedPaymentsEnabled(),
+    }),
+  );
   return json({ url: session.url });
 }

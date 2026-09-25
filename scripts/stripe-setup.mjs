@@ -26,6 +26,11 @@ const PRICES = [
   { lookup_key: "drip_pro_monthly", unit_amount: 299, interval: "month", label: "€2.99 / month" },
   { lookup_key: "drip_pro_yearly", unit_amount: 2400, interval: "year", label: "€24 / year" },
 ];
+// "Software as a service - personal use": the tax category Stripe needs to charge the right VAT,
+// and one that's eligible for Managed Payments (STRIPE_MANAGED_PAYMENTS=true).
+const TAX_CODE = "txcd_10103000";
+// Prices include VAT, as EU consumers expect: €2.99 is what they pay.
+const TAX_BEHAVIOR = "inclusive";
 
 // Product and prices
 const existing = await stripe.prices.list({ lookup_keys: PRICES.map((p) => p.lookup_key), active: true, expand: ["data.product"] });
@@ -34,11 +39,17 @@ if (!productId) {
   const product = await stripe.products.create({
     name: "Drip Pro",
     description: "Unlimited subscriptions, reminders before every charge, cancel guides and more.",
+    tax_code: TAX_CODE,
   });
   productId = product.id;
   console.log(`✓ Created product Drip Pro (${productId})`);
 } else {
   console.log(`✓ Product exists (${productId})`);
+  const product = await stripe.products.retrieve(productId);
+  if (!product.tax_code) {
+    await stripe.products.update(productId, { tax_code: TAX_CODE });
+    console.log("✓ Set the product's tax code");
+  }
 }
 const priceIds = {};
 for (const price of PRICES) {
@@ -46,6 +57,11 @@ for (const price of PRICES) {
   if (found) {
     priceIds[price.lookup_key] = found.id;
     console.log(`✓ Price ${price.label} exists (${found.id})`);
+    // Stripe allows setting the tax behaviour once, on prices created without it.
+    if (!found.tax_behavior || found.tax_behavior === "unspecified") {
+      await stripe.prices.update(found.id, { tax_behavior: TAX_BEHAVIOR });
+      console.log(`✓ Price ${price.label} now includes VAT`);
+    }
     continue;
   }
   const created = await stripe.prices.create({
@@ -53,6 +69,7 @@ for (const price of PRICES) {
     currency: "eur",
     unit_amount: price.unit_amount,
     recurring: { interval: price.interval },
+    tax_behavior: TAX_BEHAVIOR,
     lookup_key: price.lookup_key,
     transfer_lookup_key: true,
   });
@@ -109,4 +126,5 @@ if (!site.startsWith("https://")) {
     console.log(endpoint.secret ? `  STRIPE_WEBHOOK_SECRET=${endpoint.secret}` : "  (Find the signing secret under Developers → Webhooks in the Stripe dashboard.)");
   }
 }
-console.log("\nDone. Set NEXT_PUBLIC_PAYMENTS_ENABLED=true and redeploy to switch on real payments.");
+console.log("\nDone. Set NEXT_PUBLIC_PAYMENTS_ENABLED=true (and STRIPE_MANAGED_PAYMENTS=true if Stripe is your");
+console.log("merchant of record) and redeploy to switch on real payments.");

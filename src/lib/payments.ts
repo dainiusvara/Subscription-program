@@ -17,6 +17,36 @@ export const PRICE_LOOKUP_KEYS: Record<Plan, string> = {
   yearly: "drip_pro_yearly",
 };
 
+/**
+ * Stripe as merchant of record ("Managed Payments"): it charges, files and pays the right VAT in
+ * every country for an extra fee. Needs its terms accepted in the Stripe dashboard (Settings →
+ * Managed Payments) and the product's SaaS tax code, which `npm run stripe:setup` sets.
+ */
+export function managedPaymentsEnabled(): boolean {
+  return process.env.STRIPE_MANAGED_PAYMENTS === "true";
+}
+
+/** The Checkout Session that upgrades one user to Pro. */
+export function checkoutSessionParams(input: {
+  customer: string;
+  userId: string;
+  price: string;
+  site: string;
+  managed: boolean;
+}): Stripe.Checkout.SessionCreateParams {
+  return {
+    mode: "subscription",
+    customer: input.customer,
+    client_reference_id: input.userId,
+    line_items: [{ price: input.price, quantity: 1 }],
+    subscription_data: { metadata: { user_id: input.userId } },
+    allow_promotion_codes: true,
+    ...(input.managed ? { managed_payments: { enabled: true } } : {}),
+    success_url: `${input.site}/?checkout=success`,
+    cancel_url: `${input.site}/?checkout=cancelled`,
+  };
+}
+
 let stripe: Stripe | null = null;
 
 export function stripeConfigured(): boolean {

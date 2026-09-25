@@ -47,7 +47,7 @@ Cancelling for the user inside Drip isn't possible: services have no cancellatio
   device-only (`drip:state`) and signed in (`drip:cloud` cache + outbox of unsent ops). Toasts come from `notify()`
 - `src/lib/cloud.ts` (row mapping, diff, outbox; pure), `src/lib/sync.ts` (push/pull with supabase-js)
 - `src/lib/reminders.ts` (due reminders + message text; pure), `src/lib/reminder-job.ts` (daily job with injectable senders), `src/lib/senders.ts` (Resend, web-push)
-- `src/lib/payments.ts`: Stripe; `handleStripeEvent` applies subscription events newest-first (`stripe_event_at`)
+- `src/lib/payments.ts`: Stripe; `handleStripeEvent` applies subscription events newest-first (`stripe_event_at`) and sets `payments_live` on any event, test or live (so never point Stripe test mode at production). `checkoutSessionParams` adds `managed_payments` when `STRIPE_MANAGED_PAYMENTS=true` (Stripe as merchant of record handles VAT); the setup script gives the product tax code `txcd_10103000` and VAT-inclusive prices
 - `src/lib/cancel-guides.ts`: guide data, name matching, direct `cancelUrl`s (only where the service's own help page links to it) and the cancellation email
 - `src/lib/bank/`: CSV parsing (`statement.ts`), detection (`detect.ts`; `newServices` lets one recent charge of a subscription-only service count), Enable Banking client (`enable-banking.ts`, RS256-signed requests, server only), feed mapping and sync plan (`live.ts`, pure), `server.ts` (config, state cookie)
 - `src/lib/bank-sync.ts`: syncs a connection (claims each merchant in `bank_detections` first, so nothing is added twice or re-added after the user deletes it) and the daily run with notifications
