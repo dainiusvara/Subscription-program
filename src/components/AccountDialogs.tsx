@@ -107,6 +107,17 @@ export function SignInDialog({ open, onClose }: { open: boolean; onClose: () => 
               Not now
             </Button>
           </div>
+          <p className="m-0 text-xs text-muted">
+            By signing in you accept the{" "}
+            <a href="/terms" target="_blank" rel="noopener" className="text-accent underline">
+              terms
+            </a>{" "}
+            and the{" "}
+            <a href="/privacy" target="_blank" rel="noopener" className="text-accent underline">
+              privacy policy
+            </a>
+            .
+          </p>
         </form>
       ) : (
         <form onSubmit={verify} noValidate className="grid gap-3">

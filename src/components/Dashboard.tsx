@@ -12,6 +12,7 @@ import { BankImportPanel } from "./BankImport";
 import { CancelGuidesDialog, type GuideView } from "./CancelGuides";
 import type { CurrencyCode, Subscription, SubscriptionInput } from "@/lib/types";
 import { Brand, Header } from "./Header";
+import { LegalLinks } from "./LegalLinks";
 import { PlusIcon } from "./icons";
 import { NextThirtyDays } from "./NextThirtyDays";
 import { ProCard, ProDialog } from "./Pro";
@@ -382,6 +383,7 @@ function Page({ header, children }: { header: ReactNode; children: ReactNode }) 
     <div className="mx-auto grid max-w-[980px] gap-[22px] pt-[calc(28px+env(safe-area-inset-top,0px))] pb-[calc(64px+env(safe-area-inset-bottom,0px))]">
       {header}
       <main className="grid gap-[22px]">{children}</main>
+      <LegalLinks />
     </div>
   );
 }

@@ -5,6 +5,8 @@
  *
  * - The page: network first (always the latest version when online), falling
  *   back to the cached copy when offline or after 3 seconds on a bad connection.
+ * - Other pages (privacy, terms): network first, with the last copy kept for
+ *   offline reading. They never fall back to the app itself.
  * - /_next/static files: cache first. Their names contain a content hash, so a
  *   cached copy never goes stale.
  * - Icons and the manifest: served from cache, refreshed in the background.
@@ -72,6 +74,18 @@ self.addEventListener("fetch", (event) => {
 
 async function page(request, url) {
   const cache = await caches.open(PAGE_CACHE);
+  if (url.pathname !== APP_SHELL) {
+    try {
+      const response = await fetch(request);
+      if (response.ok && !url.pathname.startsWith("/api/")) void cache.put(url.pathname, response.clone());
+      return response;
+    } catch (error) {
+      const copy = await cache.match(url.pathname);
+      if (copy) return copy;
+      throw error;
+    }
+  }
+
   const cached = (await cache.match(APP_SHELL)) || null;
   const network = fetch(request).then((response) => {
     if (response.ok && url.pathname === APP_SHELL) void cache.put(APP_SHELL, response.clone());

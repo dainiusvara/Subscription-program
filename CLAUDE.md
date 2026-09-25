@@ -56,6 +56,7 @@ Cancelling for the user inside Drip isn't possible: services have no cancellatio
 - API routes in `src/app/api/`: `account` (delete), `pro-preview`, `stripe/{checkout,portal,webhook}`, `bank/{banks,connect,callback,sync,disconnect}`, `cron/{bank,reminders}` (Bearer `CRON_SECRET`), `push/test`, `assetlinks`. Routes authenticate with `Authorization: Bearer <supabase access token>`; `bank/callback` is a browser redirect and checks the `state` against an HttpOnly cookie set by `bank/connect`
 - `supabase/migrations/`: 6 migrations (accounts, reminders, payments, family, cancellations, bank). Plan fields are server-only; the Free limit, pro preview and family rules live in SQL. `bank_connections` is readable by its owner through column grants only (never `session_id` or `auth_state`); nobody but the server writes the bank tables
 - `src/components/Dashboard.tsx` owns UI state; `Modal.tsx` wraps `<dialog>` and only reports user-initiated closes
+- `src/app/privacy`, `src/app/terms`: the legal pages (`LegalPage.tsx`). Who runs Drip comes from `LEGAL_OWNER_NAME` / `LEGAL_CONTACT_EMAIL` via `src/lib/legal.ts`, never the code (the repo is public); bump `LEGAL.updated` when either page changes
 - Feature switches (`src/lib/config.ts`): no Supabase env means device-only mode; `NEXT_PUBLIC_PAYMENTS_ENABLED=true` swaps the Pro preview for Stripe. The first Stripe webhook event also sets `app_config.payments_live`, which ends the preview in the database. `NEXT_PUBLIC_BANK_ENABLED=true` (plus `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` on the server) shows "Connect your bank"
 
 ## Testing
@@ -65,7 +66,7 @@ Cancelling for the user inside Drip isn't possible: services have no cancellatio
 
 ## Next steps
 1. Owner: Stripe test mode, then Enable Banking sandbox, then live (DEPLOY.md §5–6). Vercel, the domain, Supabase and Resend are done
-2. Privacy policy and terms pages (GDPR, app stores, and Enable Banking's production review needs them). Name the processors and where data lives: Supabase (London, UK), Resend (Ireland), Vercel, and later Stripe and Enable Banking
+2. Keep `/privacy` and `/terms` true as features change (they name Supabase in London, Resend in Ireland, Vercel, Stripe and Enable Banking). A lawyer's read is worth it before paid launch
 3. Commit the Playwright end-to-end suites (and the fake Enable Banking server) and run them in CI
 4. Bank: warn when a cancelled subscription charges again; update prices when the bank shows a new amount; remind before the 180-day consent ends
 5. Store apps via PWABuilder; decide how Pro is sold inside store apps (Play Billing / Apple IAP rules)
