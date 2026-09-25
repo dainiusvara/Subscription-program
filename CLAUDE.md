@@ -23,7 +23,7 @@ Why people pay: it saves more money than it costs. One forgotten charge caught =
 9. **Done.** "Cancel it" button on every subscription: opens the service's own cancel page (Netflix, Spotify, YouTube, Google Play, Microsoft 365) or help page, or copies a cancellation email (gyms). "Did you cancel it?" moves it to a Cancelled section and counts "Saving €X a year"
 10. **Done.** Launch prep: link-preview image (`src/app/opengraph-image.tsx`, rendered at build time with TTFs fetched from Google Fonts) and Vercel Web Analytics (cookie-free page views; switched on in the Vercel project's Analytics tab)
 
-**Live in device-only mode** at https://drip-subs.vercel.app (Vercel Hobby, project `drip-subs`; every push to `main` deploys). No environment variables are set there yet, so accounts, reminders, payments and bank connections are off: the owner still has to create the Supabase, Resend (+ domain), Stripe and Enable Banking accounts and follow DEPLOY.md. No keys exist in the repo.
+**Live in device-only mode** at https://www.dripsubs.com (Vercel Hobby, project `drip-subs`; every push to `main` deploys). The domain was bought through Vercel: `dripsubs.com` redirects to `www`, and `drip-subs.vercel.app` still works. The only environment variable set is `NEXT_PUBLIC_SITE_URL`, so accounts, reminders, payments and bank connections are off: the owner still has to create the Supabase, Resend, Stripe and Enable Banking accounts and follow DEPLOY.md. No keys exist in the repo.
 
 Cancelling for the user inside Drip isn't possible: services have no cancellation API, and logging in as the user would mean storing their passwords. Drip opens the right page and the user presses the final button.
 
@@ -61,7 +61,7 @@ Cancelling for the user inside Drip isn't possible: services have no cancellatio
 - Local Supabase keys come from `npx supabase status -o env`; `.env.local` points the app at it
 
 ## Next steps
-1. Owner: follow DEPLOY.md for the rest (domain, Supabase, Resend, then Stripe test mode, Enable Banking sandbox, then live). Vercel is done
+1. Owner: follow DEPLOY.md for the rest (Supabase, Resend on dripsubs.com, then Stripe test mode, Enable Banking sandbox, then live). Vercel and the domain are done
 2. Privacy policy and terms pages (GDPR, app stores, and Enable Banking's production review needs them)
 3. Commit the Playwright end-to-end suites (and the fake Enable Banking server) and run them in CI
 4. Bank: warn when a cancelled subscription charges again; update prices when the bank shows a new amount; remind before the 180-day consent ends
