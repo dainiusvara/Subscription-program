@@ -97,6 +97,8 @@ steps 3 and 4 ask you to add DNS records there.
    `NEXT_PUBLIC_` only take effect after a redeploy.
 7. Reminders run by themselves every day at 07:00 UTC (see `vercel.json`); check **Settings →
    Cron Jobs**.
+8. Visitor stats: open the project's **Analytics** tab → **Enable**. Drip already includes Vercel Web
+   Analytics: page views and where visitors came from, with no cookies (so no cookie banner).
 
 **Check it works:** open the site, sign in with your email (the code should arrive within a
 minute), add a subscription, and open it on your phone too: it should appear there after you sign

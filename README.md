@@ -5,6 +5,7 @@ before each charge and flags the ones you no longer use. It is an installable we
 built with Next.js, TypeScript and Tailwind CSS, with Supabase (accounts and database),
 Resend and Web Push (reminders), Stripe (payments) and Enable Banking (bank connections).
 
+- **Live:** <https://drip-subs.vercel.app> (device-only for now: accounts, reminders and payments come online as the DEPLOY.md steps are done).
 - **To put it online:** follow [DEPLOY.md](DEPLOY.md), which covers every account step by step.
 - **Product brief, roadmap and status:** [CLAUDE.md](CLAUDE.md).
 
@@ -37,9 +38,6 @@ Resend and Web Push (reminders), Stripe (payments) and Enable Banking (bank conn
    cd Subscription-program
    npm install
    ```
-
-   Until this work is merged into the main branch, also run
-   `git checkout claude/keen-turing-htw4sm` before `npm install`.
 
 > **Using PowerShell instead?** If you see *"running scripts is disabled on this system"*, run
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, answer `Y`, and try again.

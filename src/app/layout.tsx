@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { THEME_COLORS, themeInitScript } from "@/lib/theme-script";
 import "./globals.css";
@@ -24,10 +25,19 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
 });
 
+const title = "Drip · every subscription in one place";
+const description =
+  "See what your subscriptions really cost each month, get warned before every charge and find the ones you no longer use.";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
 export const metadata: Metadata = {
-  title: "Drip · every subscription in one place",
-  description:
-    "See what your subscriptions really cost each month, get warned before every charge and find the ones you no longer use.",
+  // Link previews need absolute image URLs. Without NEXT_PUBLIC_SITE_URL, Next.js uses the Vercel production domain.
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  title,
+  description,
+  // The preview image itself comes from opengraph-image.tsx.
+  openGraph: { type: "website", siteName: "Drip", title, description },
+  twitter: { card: "summary_large_image", title, description },
   applicationName: "Drip",
   appleWebApp: { capable: true, title: "Drip", statusBarStyle: "default" },
   formatDetection: { telephone: false },
@@ -57,6 +67,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="font-sans">
         {children}
         <ServiceWorkerRegistration />
+        {/* Vercel Web Analytics: cookie-free page views, turned on in the Vercel project's Analytics tab. */}
+        <Analytics />
       </body>
     </html>
   );
