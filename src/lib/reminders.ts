@@ -103,7 +103,10 @@ export interface EmailMessage {
 export function reminderEmail(reminders: readonly Reminder[], currency: CurrencyCode, siteUrl: string): EmailMessage {
   const subject = headline(reminders, currency);
   const lines = reminders.map((r) => line(r, currency));
-  const cancelHint = "Not using one of these? Cancel it before it charges, then delete it in Drip.";
+  const cancelHint =
+    reminders.length === 1
+      ? "Not using it anymore? Cancel it before it charges, then delete it in Drip."
+      : "Not using one of these? Cancel it before it charges, then delete it in Drip.";
   const footer = `You get these because reminders are on in Drip. Turn them off in the app: ${siteUrl}`;
   const text = [subject, "", ...lines.map((l) => `- ${l}`), "", cancelHint, "", footer].join("\n");
   const html = `<div style="font-family:Figtree,'Segoe UI',system-ui,sans-serif;color:#15201C;max-width:480px;margin:0 auto;padding:24px">

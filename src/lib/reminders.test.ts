@@ -103,6 +103,11 @@ describe("messages", () => {
     expect(escapeHtml(`a&b'c`)).toBe("a&amp;b&#39;c");
   });
 
+  it("words the cancel hint for one or several charges", () => {
+    expect(reminderEmail(one, "EUR", "https://drip.example").text).toContain("Not using it anymore?");
+    expect(reminderEmail([...one, ...trial], "EUR", "https://drip.example").text).toContain("Not using one of these?");
+  });
+
   it("builds a notification", () => {
     expect(reminderPush(one, "EUR")).toEqual({
       title: "Netflix charges you €13.99 in 3 days",
