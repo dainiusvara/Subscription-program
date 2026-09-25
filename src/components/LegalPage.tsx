@@ -31,9 +31,14 @@ export function LegalPage({ title, children }: { title: string; children: ReactN
   );
 }
 
-/** Whoever runs Drip, or a neutral fallback while LEGAL_OWNER_NAME isn't set. */
+/** Whoever runs Drip (and their postal address once set), or a neutral fallback. */
 export function Owner() {
-  return <>{LEGAL.owner || "the person who runs Drip"}</>;
+  return (
+    <>
+      {LEGAL.owner || "the person who runs Drip"}
+      {LEGAL.address && ` (${LEGAL.address})`}
+    </>
+  );
 }
 
 export function ContactEmail() {

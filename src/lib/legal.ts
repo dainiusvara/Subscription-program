@@ -7,6 +7,8 @@
 export const LEGAL = {
   owner: process.env.LEGAL_OWNER_NAME?.trim() ?? "",
   email: process.env.LEGAL_CONTACT_EMAIL?.trim() ?? "",
+  /** Postal address. EU consumer law requires it once Drip sells Pro. */
+  address: process.env.LEGAL_ADDRESS?.trim() ?? "",
   /** Change this whenever the privacy policy or terms change. */
   updated: "25 September 2026",
 };

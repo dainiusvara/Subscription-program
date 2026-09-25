@@ -235,7 +235,8 @@ cloud Mac service). PWABuilder's **iOS** package is an Xcode project to build an
 
 - The **privacy policy** (`/privacy`) and **terms** (`/terms`) are built in. In Vercel add
   `LEGAL_OWNER_NAME` (your name or business name) and `LEGAL_CONTACT_EMAIL` (an address you read),
-  then redeploy. If you change what Drip collects or which services it uses, update both pages and
+  then redeploy. Before you sell Pro, also add `LEGAL_ADDRESS` (a postal address): EU consumer law
+  requires sellers to show one. If you change what Drip collects or which services it uses, update both pages and
   the date in `src/lib/legal.ts`.
 - Upgrade Supabase to Pro so the project never pauses, and turn on its daily backups.
 - In Stripe, turn on email receipts and set your business name and support email.
